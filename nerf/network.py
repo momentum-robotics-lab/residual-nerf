@@ -97,6 +97,7 @@ class NeRFNetwork(NeRFRenderer):
         # d: [N, 3], nomalized in [-1, 1]
         # sigma
         
+               
         bg_raw_sigma = None 
         bg_raw_color = None
         if bg_model is not None:
@@ -137,7 +138,7 @@ class NeRFNetwork(NeRFRenderer):
         result = (sigma, color)
         if return_features:
             result += (raw_sigma, raw_color)
-            
+        
         return result
 
     def density(self, x):

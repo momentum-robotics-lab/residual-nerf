@@ -24,6 +24,8 @@ if __name__ == '__main__':
     parser.add_argument('--iters', type=int, default=30000, help="training iters")
     parser.add_argument('--lr', type=float, default=1e-2, help="initial learning rate")
     parser.add_argument('--ckpt', type=str, default='latest')
+    parser.add_argument('--bg_ckpt', type=str, default=None)
+    parser.add_argument('--res_ckpt', type=str, default='latest')
     parser.add_argument('--num_rays', type=int, default=4096, help="num rays sampled per image for each training step")
     parser.add_argument('--cuda_ray', action='store_true', help="use CUDA raymarching instead of pytorch")
     parser.add_argument('--max_steps', type=int, default=1024, help="max num steps sampled per ray (only valid when using --cuda_ray)")
@@ -108,6 +110,16 @@ if __name__ == '__main__':
         bg_radius=opt.bg_radius,
     )
     
+    bg_model = NeRFNetwork(
+        encoding="hashgrid",
+        bound=opt.bound,
+        cuda_ray=opt.cuda_ray,
+        density_scale=1,
+        min_near=opt.min_near,
+        density_thresh=opt.density_thresh,
+        bg_radius=opt.bg_radius,
+    )
+    
     print(model)
 
     criterion = torch.nn.MSELoss(reduction='none')
@@ -119,7 +131,7 @@ if __name__ == '__main__':
     if opt.test:
         
         metrics = [PSNRMeter(), LPIPSMeter(device=device)]
-        trainer = Trainer('ngp', opt, model, device=device, workspace=opt.workspace, criterion=criterion, fp16=opt.fp16, metrics=metrics, use_checkpoint=opt.ckpt)
+        trainer = Trainer('ngp_'+opt.type, opt, model, device=device, workspace=opt.workspace, criterion=criterion, fp16=opt.fp16, metrics=metrics, use_checkpoint=opt.ckpt)
 
         if opt.gui:
             gui = NeRFGUI(opt, trainer)
@@ -145,7 +157,9 @@ if __name__ == '__main__':
         scheduler = lambda optimizer: optim.lr_scheduler.LambdaLR(optimizer, lambda iter: 0.1 ** min(iter / opt.iters, 1))
 
         metrics = [PSNRMeter(), LPIPSMeter(device=device)]
-        trainer = Trainer('ngp', opt, model, device=device, workspace=opt.workspace, optimizer=optimizer, criterion=criterion, ema_decay=0.95, fp16=opt.fp16, lr_scheduler=scheduler, scheduler_update_every_step=True, metrics=metrics, use_checkpoint=opt.ckpt, eval_interval=50)
+        trainer = Trainer('ngp_'+opt.type, opt, model, device=device, workspace=opt.workspace, optimizer=optimizer, criterion=criterion, ema_decay=0.95, 
+                          fp16=opt.fp16, lr_scheduler=scheduler, scheduler_update_every_step=True, metrics=metrics, use_checkpoint=opt.ckpt, eval_interval=50,use_wandb=opt.wandb
+                          , bg_cktp = opt.bg_ckpt, bg_model=bg_model)
 
         if opt.gui:
             gui = NeRFGUI(opt, trainer, train_loader)

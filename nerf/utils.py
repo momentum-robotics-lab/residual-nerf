@@ -9,6 +9,7 @@ import tensorboardX
 
 import numpy as np
 import pandas as pd
+import wandb 
 
 import time
 from datetime import datetime
@@ -337,9 +338,14 @@ class Trainer(object):
                  use_checkpoint="latest", # which ckpt to use at init time
                  use_tensorboardX=True, # whether to use tensorboard for logging
                  scheduler_update_every_step=False, # whether to call scheduler.step() after every train step
+                 use_wandb=False,
+                 bg_cktp = None,
+                 bg_model = None
                  ):
         
         self.name = name
+        self.bg_model = bg_model
+        self.bg_checkpoint = bg_cktp
         self.opt = opt
         self.mute = mute
         self.metrics = metrics
@@ -359,7 +365,12 @@ class Trainer(object):
         self.scheduler_update_every_step = scheduler_update_every_step
         self.device = device if device is not None else torch.device(f'cuda:{local_rank}' if torch.cuda.is_available() else 'cpu')
         self.console = Console()
+        self.use_wandb = use_wandb
 
+        if bg_model is not None:
+            bg_model.to(self.device)
+        
+        
         model.to(self.device)
         if self.world_size > 1:
             model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
@@ -422,6 +433,9 @@ class Trainer(object):
         self.log(f'[INFO] Trainer: {self.name} | {self.time_stamp} | {self.device} | {"fp16" if self.fp16 else "fp32"} | {self.workspace}')
         self.log(f'[INFO] #parameters: {sum([p.numel() for p in model.parameters() if p.requires_grad])}')
 
+        # if bg model available, load it 
+        self.load_bg_checkpoint(self.bg_checkpoint)
+        
         if self.workspace is not None:
             if self.use_checkpoint == "scratch":
                 self.log("[INFO] Training from scratch ...")
@@ -477,7 +491,8 @@ class Trainer(object):
             H, W = data['H'], data['W']
 
             # currently fix white bg, MUST force all rays!
-            outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True, **vars(self.opt))
+            
+            outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,bg_model=self.bg_model, **vars(self.opt))
             pred_rgb = outputs['image'].reshape(B, H, W, 3).permute(0, 3, 1, 2).contiguous()
 
             # [debug] uncomment to plot the images used in train_step
@@ -506,10 +521,8 @@ class Trainer(object):
             gt_rgb = images[..., :3] * images[..., 3:] + bg_color * (1 - images[..., 3:])
         else:
             gt_rgb = images
-
-        outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=bg_color, perturb=True, force_all_rays=False if self.opt.patch_size == 1 else True, **vars(self.opt))
+        outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=bg_color, perturb=True,bg_model=self.bg_model, force_all_rays=False if self.opt.patch_size == 1 else True, **vars(self.opt))
         # outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=bg_color, perturb=True, force_all_rays=True, **vars(self.opt))
-    
         pred_rgb = outputs['image']
 
         # MSE loss
@@ -580,7 +593,7 @@ class Trainer(object):
         else:
             gt_rgb = images
         
-        outputs = self.model.render(rays_o, rays_d, staged=True, bg_color=bg_color, perturb=False, **vars(self.opt))
+        outputs = self.model.render(rays_o, rays_d, staged=True, bg_color=bg_color,bg_model=self.bg_model, perturb=False, **vars(self.opt))
 
         pred_rgb = outputs['image'].reshape(B, H, W, 3)
         pred_depth = outputs['depth'].reshape(B, H, W)
@@ -599,7 +612,7 @@ class Trainer(object):
         if bg_color is not None:
             bg_color = bg_color.to(self.device)
 
-        outputs = self.model.render(rays_o, rays_d, staged=True, bg_color=bg_color, perturb=perturb, **vars(self.opt))
+        outputs = self.model.render(rays_o, rays_d, staged=True, bg_color=bg_color, perturb=perturb,bg_model=self.bg_model, **vars(self.opt))
 
         pred_rgb = outputs['image'].reshape(-1, H, W, 3)
         pred_depth = outputs['depth'].reshape(-1, H, W)
@@ -644,9 +657,7 @@ class Trainer(object):
         
         for epoch in range(self.epoch + 1, max_epochs + 1):
             self.epoch = epoch
-
             self.train_one_epoch(train_loader)
-
             if self.workspace is not None and self.local_rank == 0:
                 self.save_checkpoint(full=True, best=False)
 
@@ -838,6 +849,7 @@ class Trainer(object):
 
         self.model.train()
 
+
         # distributedSampler: must call set_epoch() to shuffle indices across multiple epochs
         # ref: https://pytorch.org/docs/stable/data.html
         if self.world_size > 1:
@@ -859,10 +871,9 @@ class Trainer(object):
             self.global_step += 1
 
             self.optimizer.zero_grad()
-
             with torch.cuda.amp.autocast(enabled=self.fp16):
                 preds, truths, loss = self.train_step(data)
-         
+
             self.scaler.scale(loss).backward()
             self.scaler.step(self.optimizer)
             self.scaler.update()
@@ -881,11 +892,16 @@ class Trainer(object):
                 if self.use_tensorboardX:
                     self.writer.add_scalar("train/loss", loss_val, self.global_step)
                     self.writer.add_scalar("train/lr", self.optimizer.param_groups[0]['lr'], self.global_step)
+                
+                psrn_tool = PSNRMeter()
+                psrn_tool.update(preds,truths)
+                if self.use_wandb:
+                    wandb.log({"train/loss": loss_val, "train/lr": self.optimizer.param_groups[0]['lr'], "train/psnr": psrn_tool.measure()}, step=self.global_step)
 
                 if self.scheduler_update_every_step:
-                    pbar.set_description(f"loss={loss_val:.4f} ({total_loss/self.local_step:.4f}), lr={self.optimizer.param_groups[0]['lr']:.6f}")
+                    pbar.set_description(f"loss={loss_val:.4f} ({total_loss/self.local_step:.4f}), psnr={psrn_tool.measure():.4f}, lr={self.optimizer.param_groups[0]['lr']:.6f}")
                 else:
-                    pbar.set_description(f"loss={loss_val:.4f} ({total_loss/self.local_step:.4f})")
+                    pbar.set_description(f"loss={loss_val:.4f} ({total_loss/self.local_step:.4f}), psnr={psrn_tool.measure():.4f}")
                 pbar.update(loader.batch_size)
 
         if self.ema is not None:
@@ -1073,7 +1089,16 @@ class Trainer(object):
                     torch.save(state, self.best_path)
             else:
                 self.log(f"[WARN] no evaluated results found, skip saving best checkpoint.")
-            
+    
+    
+    def load_bg_checkpoint(self,checkpoint=None):
+        if checkpoint is not None and self.bg_model is not None:
+            checkpoint_dict = torch.load(checkpoint, map_location=self.device)
+            self.bg_model.load_state_dict(checkpoint_dict['model'], strict=False)
+            self.log(f"[INFO] loaded background model from {checkpoint}.")
+        else:
+            self.log(f"[WARN] no background model loaded.")
+    
     def load_checkpoint(self, checkpoint=None, model_only=False):
         if checkpoint is None:
             checkpoint_list = sorted(glob.glob(f'{self.ckpt_path}/{self.name}_ep*.pth'))

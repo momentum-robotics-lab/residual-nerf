@@ -10,15 +10,16 @@ else
     export CUDA_VISIBLE_DEVICES=$1
 fi
 
-export ITERATIONS=100000
+export BG_CHECKPOINT='lego_bg/checkpoints/ngp_bg.pth'
+export ITERATIONS=10000
 # second argument is number of iterations 
 if [ $# -lt 2 ]
   then
-    echo "No iterations supplied, using 100000"
+    echo "No iterations supplied, using 10000"
     
 else
     echo "Using $2 iterations"
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/lego --workspace lego_all -O --bound 1 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type wrap
+python3 main_nerf.py data/lego --workspace lego_bg -O --bound 1 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type wrap --ckpt scratch --wandb --wandb_name lego_normal --wandb_project lego 
