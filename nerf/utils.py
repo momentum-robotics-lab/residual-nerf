@@ -344,7 +344,7 @@ class Trainer(object):
                  ):
         
         self.name = name
-        self.bg_model = bg_model
+        
         self.bg_checkpoint = bg_cktp
         self.opt = opt
         self.mute = mute
@@ -367,15 +367,22 @@ class Trainer(object):
         self.console = Console()
         self.use_wandb = use_wandb
 
-        if bg_model is not None:
-            bg_model.to(self.device)
-        
+              
         
         model.to(self.device)
+        if bg_model is not None:
+            bg_model.to(self.device)
+            
         if self.world_size > 1:
             model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank])
+            
+            if bg_model is not None:
+                bg_model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(bg_model)
+                bg_model = torch.nn.parallel.DistributedDataParallel(bg_model, device_ids=[local_rank])
+                
         self.model = model
+        self.bg_model = bg_model
 
         if isinstance(criterion, nn.Module):
             criterion.to(self.device)
