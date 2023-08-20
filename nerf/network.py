@@ -92,11 +92,16 @@ class NeRFNetwork(NeRFRenderer):
             self.bg_net = None
 
 
-    def forward(self, x, d):
+    def forward(self, x, d,bg_model=None,return_features=False):
         # x: [N, 3], in [-bound, bound]
         # d: [N, 3], nomalized in [-1, 1]
-
         # sigma
+        
+        bg_raw_sigma = None 
+        bg_raw_color = None
+        if bg_model is not None:
+            bg_sigma, bg_color, bg_raw_sigma, bg_raw_color = bg_model(x,d,return_features=True)
+        
         x = self.encoder(x, bound=self.bound)
 
         h = x
@@ -105,7 +110,11 @@ class NeRFNetwork(NeRFRenderer):
             if l != self.num_layers - 1:
                 h = F.relu(h, inplace=True)
 
-        #sigma = F.relu(h[..., 0])
+        raw_sigma = h.clone()
+        
+        if bg_raw_sigma is not None:
+            h = h + bg_raw_sigma
+        
         sigma = trunc_exp(h[..., 0])
         geo_feat = h[..., 1:]
 
@@ -118,10 +127,18 @@ class NeRFNetwork(NeRFRenderer):
             if l != self.num_layers_color - 1:
                 h = F.relu(h, inplace=True)
         
+        raw_color = h.clone()
         # sigmoid activation for rgb
+        if bg_raw_color is not None:
+            h = h + bg_raw_color
+        
         color = torch.sigmoid(h)
 
-        return sigma, color
+        result = (sigma, color)
+        if return_features:
+            result += (raw_sigma, raw_color)
+            
+        return result
 
     def density(self, x):
         # x: [N, 3], in [-bound, bound]

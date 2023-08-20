@@ -7,6 +7,7 @@ from nerf.utils import *
 
 from functools import partial
 from loss import huber_loss
+import wandb 
 
 #torch.autograd.set_detect_anomaly(True)
 
@@ -61,8 +62,15 @@ if __name__ == '__main__':
     parser.add_argument('--error_map', action='store_true', help="use error map to sample rays")
     parser.add_argument('--clip_text', type=str, default='', help="text input for CLIP guidance")
     parser.add_argument('--rand_pose', type=int, default=-1, help="<0 uses no rand pose, =0 only uses rand pose, >0 sample one rand pose every $ known poses")
-    parser.add_argument('--type',type=str,default='all',choices=['bg','res','all'])
+    parser.add_argument('--type',type=str,default='all',choices=['bg','wrap','all'])
+    parser.add_argument('--wandb',action='store_true',help='use wandb')
+    parser.add_argument('--wandb_name',type=str,default='nerf',help='wandb name')
+    parser.add_argument('--wandb_project',type=str,default='nerf',help='wandb project')
     opt = parser.parse_args()
+
+    if opt.wandb:
+        wandb.init(project=opt.wandb_project,name=opt.wandb_name,config=opt)
+        
 
     if opt.O:
         opt.fp16 = True
@@ -148,7 +156,7 @@ if __name__ == '__main__':
             test_loader = NeRFDataset(opt, device=device, split='test',type=opt.type).dataloader()
 
             max_epoch = np.ceil(opt.iters / len(train_loader)).astype(np.int32)
-            trainer.train(train_loader, test_loader, max_epoch)
+            trainer.train(train_loader, test_loader, max_epoch,opt=opt)
 
             if test_loader.has_gt:
                 trainer.evaluate(test_loader) # blender has gt, so evaluate it.
