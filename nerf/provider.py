@@ -92,12 +92,12 @@ def rand_poses(size, device, radius=1, theta_range=[np.pi/3, 2*np.pi/3], phi_ran
 
 
 class NeRFDataset:
-    def __init__(self, opt, device, type='train', downscale=1, n_test=10):
+    def __init__(self, opt, device, split='train', downscale=1, n_test=10,type='all'):
         super().__init__()
         
         self.opt = opt
         self.device = device
-        self.type = type # train, val, test
+        self.split = split # train, val, test
         self.downscale = downscale
         self.root_path = opt.path
         self.preload = opt.preload # preload data into GPU
@@ -105,8 +105,9 @@ class NeRFDataset:
         self.offset = opt.offset # camera offset
         self.bound = opt.bound # bounding box half length, also used as the radius to random sample poses.
         self.fp16 = opt.fp16 # if preload, load into fp16.
+        self.type = type 
 
-        self.training = self.type in ['train', 'all', 'trainval']
+        self.training = self.split in ['train', 'all', 'trainval']
         self.num_rays = self.opt.num_rays if self.training else -1
 
         self.rand_pose = opt.rand_pose
@@ -125,7 +126,7 @@ class NeRFDataset:
                 transform = json.load(f)
         elif self.mode == 'blender':
             # load all splits (train/valid/test), this is what instant-ngp in fact does...
-            if type == 'all':
+            if split == 'all':
                 transform_paths = glob.glob(os.path.join(self.root_path, '*.json'))
                 transform = None
                 for transform_path in transform_paths:
@@ -136,7 +137,7 @@ class NeRFDataset:
                         else:
                             transform['frames'].extend(tmp_transform['frames'])
             # load train and val split
-            elif type == 'trainval':
+            elif split == 'trainval':
                 with open(os.path.join(self.root_path, f'transforms_train.json'), 'r') as f:
                     transform = json.load(f)
                 with open(os.path.join(self.root_path, f'transforms_val.json'), 'r') as f:
@@ -144,7 +145,7 @@ class NeRFDataset:
                 transform['frames'].extend(transform_val['frames'])
             # only load one specified split
             else:
-                with open(os.path.join(self.root_path, f'transforms_{type}.json'), 'r') as f:
+                with open(os.path.join(self.root_path, f'transforms_{split}.json'), 'r') as f:
                     transform = json.load(f)
 
         else:
@@ -163,7 +164,7 @@ class NeRFDataset:
         #frames = sorted(frames, key=lambda d: d['file_path']) # why do I sort...
         
         # for colmap, manually interpolate a test set.
-        if self.mode == 'colmap' and type == 'test':
+        if self.mode == 'colmap' and split == 'test':
             
             # choose two random poses, and interpolate between.
             f0, f1 = np.random.choice(frames, 2, replace=False)
@@ -184,15 +185,15 @@ class NeRFDataset:
         else:
             # for colmap, manually split a valid set (the first frame).
             if self.mode == 'colmap':
-                if type == 'train':
+                if split == 'train':
                     frames = frames[1:]
-                elif type == 'val':
+                elif split == 'val':
                     frames = frames[:1]
                 # else 'all' or 'trainval' : use all frames
             
             self.poses = []
             self.images = []
-            for f in tqdm.tqdm(frames, desc=f'Loading {type} data'):
+            for f in tqdm.tqdm(frames, desc=f'Loading {split} data'):
                 f_path = os.path.join(self.root_path, f['file_path'])
                 if self.mode == 'blender' and '.' not in os.path.basename(f_path):
                     f_path += '.png' # so silly...
@@ -219,9 +220,13 @@ class NeRFDataset:
                     image = cv2.resize(image, (self.W, self.H), interpolation=cv2.INTER_AREA)
                     
                 image = image.astype(np.float32) / 255 # [H, W, 3/4]
-
-                self.poses.append(pose)
-                self.images.append(image)
+                
+                if self.type == 'all':
+                    self.poses.append(pose)
+                    self.images.append(image)
+                elif self.type == f['type']:
+                    self.poses.append(pose)
+                    self.images.append(image)
             
         self.poses = torch.from_numpy(np.stack(self.poses, axis=0)) # [N, 4, 4]
         if self.images is not None:
