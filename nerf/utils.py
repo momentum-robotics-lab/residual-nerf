@@ -613,7 +613,7 @@ class Trainer(object):
         return pred_rgb, pred_depth, gt_rgb, loss
 
     # moved out bg_color and perturb for more flexible control...
-    def test_step(self, data, bg_color=None, perturb=False):  
+    def test_step(self, data, bg_color=None, perturb=False,return_dex = False,D_thresh = 0.0):  
 
         rays_o = data['rays_o'] # [B, N, 3]
         rays_d = data['rays_d'] # [B, N, 3]
@@ -622,12 +622,18 @@ class Trainer(object):
         if bg_color is not None:
             bg_color = bg_color.to(self.device)
 
-        outputs = self.model.render(rays_o, rays_d, staged=True, bg_color=bg_color, perturb=perturb,bg_model=self.bg_model, **vars(self.opt))
+        print("before render",D_thresh)
+        outputs = self.model.render(rays_o, rays_d, staged=True, bg_color=bg_color, perturb=perturb,bg_model=self.bg_model,D_thresh=D_thresh, **vars(self.opt))
 
         pred_rgb = outputs['image'].reshape(-1, H, W, 3)
         pred_depth = outputs['depth'].reshape(-1, H, W)
+        result = (pred_rgb, pred_depth)
 
-        return pred_rgb, pred_depth
+        if return_dex:
+            pred_dex_depth = outputs['dex_depth'].reshape(-1, H, W)
+            result += (pred_dex_depth,)
+
+        return result
 
 
     def save_mesh(self, save_path=None, resolution=256, threshold=10):
@@ -701,13 +707,14 @@ class Trainer(object):
         if write_video:
             all_preds = []
             all_preds_depth = []
+            all_preds_dex_depth = []
 
         with torch.no_grad():
 
             for i, data in enumerate(loader):
                 
                 with torch.cuda.amp.autocast(enabled=self.fp16):
-                    preds, preds_depth = self.test_step(data)
+                    preds, preds_depth, preds_dex_depth = self.test_step(data,return_dex=True)
 
                 if self.opt.color_space == 'linear':
                     preds = linear_to_srgb(preds)
@@ -718,20 +725,27 @@ class Trainer(object):
                 pred_depth = preds_depth[0].detach().cpu().numpy()
                 pred_depth = (pred_depth * 255).astype(np.uint8)
 
+                preds_dex_depth = preds_dex_depth[0].detach().cpu().numpy()
+                preds_dex_depth = (preds_dex_depth * 255).astype(np.uint8)
+
                 if write_video:
                     all_preds.append(pred)
                     all_preds_depth.append(pred_depth)
+                    all_preds_dex_depth.append(preds_dex_depth)
                 else:
                     cv2.imwrite(os.path.join(save_path, f'{name}_{i:04d}_rgb.png'), cv2.cvtColor(pred, cv2.COLOR_RGB2BGR))
                     cv2.imwrite(os.path.join(save_path, f'{name}_{i:04d}_depth.png'), pred_depth)
+                    cv2.imwrite(os.path.join(save_path, f'{name}_{i:04d}_dex_depth.png'), preds_dex_depth)
 
                 pbar.update(loader.batch_size)
         
         if write_video:
             all_preds = np.stack(all_preds, axis=0)
             all_preds_depth = np.stack(all_preds_depth, axis=0)
+            all_preds_dex_depth = np.stack(all_preds_dex_depth, axis=0)
             imageio.mimwrite(os.path.join(save_path, f'{name}_rgb.mp4'), all_preds, fps=25, quality=8, macro_block_size=1)
             imageio.mimwrite(os.path.join(save_path, f'{name}_depth.mp4'), all_preds_depth, fps=25, quality=8, macro_block_size=1)
+            imageio.mimwrite(os.path.join(save_path, f'{name}_dex_depth.mp4'), all_preds_dex_depth, fps=25, quality=8, macro_block_size=1)
 
         self.log(f"==> Finished Test.")
     
@@ -798,7 +812,7 @@ class Trainer(object):
 
     
     # [GUI] test on a single image
-    def test_gui(self, pose, intrinsics, W, H, bg_color=None, spp=1, downscale=1):
+    def test_gui(self, pose, intrinsics, W, H, bg_color=None, spp=1, downscale=1,D_thresh = 0.0):
         
         # render resolution (may need downscale to for better frame rate)
         rH = int(H * downscale)
@@ -825,7 +839,8 @@ class Trainer(object):
         with torch.no_grad():
             with torch.cuda.amp.autocast(enabled=self.fp16):
                 # here spp is used as perturb random seed! (but not perturb the first sample)
-                preds, preds_depth = self.test_step(data, bg_color=bg_color, perturb=False if spp == 1 else spp)
+                print("before test_step",D_thresh)
+                preds, preds_depth, preds_dex_depth = self.test_step(data, bg_color=bg_color, perturb=False if spp == 1 else spp,return_dex=True,D_thresh=D_thresh)
 
         if self.ema is not None:
             self.ema.restore()
@@ -835,16 +850,19 @@ class Trainer(object):
             # TODO: have to permute twice with torch...
             preds = F.interpolate(preds.permute(0, 3, 1, 2), size=(H, W), mode='nearest').permute(0, 2, 3, 1).contiguous()
             preds_depth = F.interpolate(preds_depth.unsqueeze(1), size=(H, W), mode='nearest').squeeze(1)
+            preds_dex_depth = F.interpolate(preds_dex_depth.unsqueeze(1), size=(H, W), mode='nearest').squeeze(1)
 
         if self.opt.color_space == 'linear':
             preds = linear_to_srgb(preds)
 
         pred = preds[0].detach().cpu().numpy()
         pred_depth = preds_depth[0].detach().cpu().numpy()
+        pred_dex_depth = preds_dex_depth[0].detach().cpu().numpy()
 
         outputs = {
             'image': pred,
             'depth': pred_depth,
+            'dex_depth': pred_dex_depth,
         }
 
         return outputs

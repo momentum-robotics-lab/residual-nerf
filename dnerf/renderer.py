@@ -339,6 +339,10 @@ class NeRFRenderer(nn.Module):
             
             weights_sum = torch.zeros(N, dtype=dtype, device=device)
             depth = torch.zeros(N, dtype=dtype, device=device)
+
+            # fill dex depth with infty
+            dex_depth = torch.ones(N, dtype=dtype, device=device) * 1e10
+
             image = torch.zeros(N, 3, dtype=dtype, device=device)
             
             n_alive = N
@@ -367,7 +371,7 @@ class NeRFRenderer(nn.Module):
                 # rgbs = self.color(xyzs, dirs, **density_outputs)
                 sigmas = self.density_scale * sigmas
 
-                raymarching.composite_rays(n_alive, n_step, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth, image)
+                raymarching.composite_rays(n_alive, n_step, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth,dex_depth, image)
 
                 rays_alive = rays_alive[rays_alive >= 0]
 

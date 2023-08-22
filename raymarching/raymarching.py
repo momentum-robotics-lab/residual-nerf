@@ -274,9 +274,10 @@ class _composite_rays_train(Function):
     
     @staticmethod
     @custom_bwd
-    def backward(ctx, grad_weights_sum, grad_depth, grad_image):
+    def backward(ctx, grad_weights_sum, grad_depth, grad_image,grad_dex_depth):
 
         # NOTE: grad_depth is not used now! It won't be propagated to sigmas.
+        # neither is grad_dex_depth
 
         grad_weights_sum = grad_weights_sum.contiguous()
         grad_image = grad_image.contiguous()
@@ -355,7 +356,7 @@ march_rays = _march_rays.apply
 class _composite_rays(Function):
     @staticmethod
     @custom_fwd(cast_inputs=torch.float32) # need to cast sigmas & rgbs to float
-    def forward(ctx, n_alive, n_step, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth, image, T_thresh=1e-2, D_thresh=10, dex_depth=None):
+    def forward(ctx, n_alive, n_step, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth, dex_depth, image, T_thresh=1e-2, D_thresh=-10):
         ''' composite rays' rgbs, according to the ray marching formula. (for inference)
         Args:
             n_alive: int, number of alive rays
@@ -372,6 +373,7 @@ class _composite_rays(Function):
         '''
         if dex_depth is None:
             dex_depth = torch.zeros_like(depth)
+        print("before backend:",D_thresh)
         _backend.composite_rays(n_alive, n_step, T_thresh, D_thresh, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth, dex_depth, image)
         return tuple()
 

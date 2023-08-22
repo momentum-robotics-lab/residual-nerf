@@ -62,7 +62,8 @@ class NeRFGUI:
         self.bg_color = torch.ones(3, dtype=torch.float32) # default white bg
         self.training = False
         self.step = 0 # training step 
-
+        self.dex_thresh = 0.0 
+        
         self.trainer = trainer
         self.train_loader = train_loader
         if train_loader is not None:
@@ -113,8 +114,10 @@ class NeRFGUI:
     def prepare_buffer(self, outputs):
         if self.mode == 'image':
             return outputs['image']
-        else:
+        elif self.mode == 'depth':
             return np.expand_dims(outputs['depth'], -1).repeat(3, -1)
+        elif self.mode == 'dex_depth':
+            return np.expand_dims(outputs['dex_depth'], -1).repeat(3, -1)
 
     
     def test_step(self):
@@ -125,7 +128,8 @@ class NeRFGUI:
             starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
             starter.record()
 
-            outputs = self.trainer.test_gui(self.cam.pose, self.cam.intrinsics, self.W, self.H, self.bg_color, self.spp, self.downscale)
+            print("before going out of gui:",self.dex_thresh)
+            outputs = self.trainer.test_gui(self.cam.pose, self.cam.intrinsics, self.W, self.H, self.bg_color, self.spp, self.downscale,D_thresh=self.dex_thresh)
 
             ender.record()
             torch.cuda.synchronize()
@@ -282,7 +286,7 @@ class NeRFGUI:
                     self.mode = app_data
                     self.need_update = True
                 
-                dpg.add_combo(('image', 'depth'), label='mode', default_value=self.mode, callback=callback_change_mode)
+                dpg.add_combo(('image', 'depth','dex_depth'), label='mode', default_value=self.mode, callback=callback_change_mode)
 
                 # bg_color picker
                 def callback_change_bg(sender, app_data):
@@ -298,6 +302,11 @@ class NeRFGUI:
 
                 dpg.add_slider_int(label="FoV (vertical)", min_value=1, max_value=120, format="%d deg", default_value=self.cam.fovy, callback=callback_set_fovy)
 
+                def call_back_dex_thresh(sender, app_data):
+                    self.dex_thresh = app_data
+                    self.need_update = True
+                
+                dpg.add_slider_float(label="dex_thresh", min_value=-10.0, max_value=10.0, format="%.5f", default_value=0.0, callback=call_back_dex_thresh)
                 # dt_gamma slider
                 def callback_set_dt_gamma(sender, app_data):
                     self.opt.dt_gamma = app_data

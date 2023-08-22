@@ -550,7 +550,7 @@ __global__ void kernel_composite_rays_train_forward(
         t += deltas[1]; // real delta
         d += weight * t;
         
-        if (weight > 0.0f && d_dex == 0.0f && deltas[1] > D_thresh) {
+        if (d_dex == 0.0f && sigmas[0] > D_thresh) {
             d_dex = t;
         }
 
@@ -847,12 +847,14 @@ __global__ void kernel_composite_rays(
     rays_t += index;
     weights_sum += index;
     depth += index;
+    dex_depth += index;
     image += index * 3;
 
     scalar_t t = rays_t[0]; // current ray's t
     
     scalar_t weight_sum = weights_sum[0];
     scalar_t d = depth[0];
+    scalar_t d_dex = dex_depth[0];
     scalar_t r = image[0];
     scalar_t g = image[1];
     scalar_t b = image[2];
@@ -882,6 +884,10 @@ __global__ void kernel_composite_rays(
         g += weight * rgbs[1];
         b += weight * rgbs[2];
 
+        if ( sigmas[0] > D_thresh && d_dex >  float(t)  ) {
+            d_dex = t;
+        }
+
         //printf("[n=%d] num_steps=%d, alpha=%f, w=%f, T=%f, sum_dt=%f, d=%f\n", n, step, alpha, weight, T, sum_delta, d);
 
         // ray is terminated if T is too small
@@ -906,6 +912,7 @@ __global__ void kernel_composite_rays(
 
     weights_sum[0] = weight_sum; // this is the thing I needed!
     depth[0] = d;
+    dex_depth[0] = d_dex;
     image[0] = r;
     image[1] = g;
     image[2] = b;

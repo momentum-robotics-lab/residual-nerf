@@ -68,6 +68,7 @@ if __name__ == '__main__':
     parser.add_argument('--wandb',action='store_true',help='use wandb')
     parser.add_argument('--wandb_name',type=str,default='nerf',help='wandb name')
     parser.add_argument('--wandb_project',type=str,default='nerf',help='wandb project')
+    parser.add_argument('--eval_interval',type=int,default=50,help='eval interval')
     opt = parser.parse_args()
 
     if opt.wandb:
@@ -160,7 +161,7 @@ if __name__ == '__main__':
 
         metrics = [PSNRMeter(), LPIPSMeter(device=device)]
         trainer = Trainer('ngp_'+opt.type, opt, model, device=device, workspace=opt.workspace, optimizer=optimizer, criterion=criterion, ema_decay=0.95, 
-                          fp16=opt.fp16, lr_scheduler=scheduler, scheduler_update_every_step=True, metrics=metrics, use_checkpoint=opt.ckpt, eval_interval=50,use_wandb=opt.wandb
+                          fp16=opt.fp16, lr_scheduler=scheduler, scheduler_update_every_step=True, metrics=metrics, use_checkpoint=opt.ckpt, eval_interval=opt.eval_interval,use_wandb=opt.wandb
                           , bg_cktp = opt.bg_ckpt, bg_model=bg_model)
 
         if opt.gui:
