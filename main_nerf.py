@@ -109,18 +109,20 @@ if __name__ == '__main__':
         density_thresh=opt.density_thresh,
         bg_radius=opt.bg_radius,
     )
+
+    if opt.type == 'wrap':    
+        bg_model = NeRFNetwork(
+            encoding="hashgrid",
+            bound=opt.bound,
+            cuda_ray=opt.cuda_ray,
+            density_scale=1,
+            min_near=opt.min_near,
+            density_thresh=opt.density_thresh,
+            bg_radius=opt.bg_radius,
+        )
+    else:
+        bg_model = None
     
-    bg_model = NeRFNetwork(
-        encoding="hashgrid",
-        bound=opt.bound,
-        cuda_ray=opt.cuda_ray,
-        density_scale=1,
-        min_near=opt.min_near,
-        density_thresh=opt.density_thresh,
-        bg_radius=opt.bg_radius,
-    )
-    
-    print(model)
 
     criterion = torch.nn.MSELoss(reduction='none')
     #criterion = partial(huber_loss, reduction='none')

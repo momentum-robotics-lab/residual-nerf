@@ -297,24 +297,31 @@ class NeRFRenderer(nn.Module):
             if len(sigmas.shape) == 2:
                 K = sigmas.shape[0]
                 depths = []
+                dex_depths = []
                 images = []
                 for k in range(K):
-                    weights_sum, depth, image = raymarching.composite_rays_train(sigmas[k], rgbs[k], deltas, rays, T_thresh)
+                    weights_sum, depth, image, dex_depth = raymarching.composite_rays_train(sigmas[k], rgbs[k], deltas, rays, T_thresh,return_depth=True)
                     image = image + (1 - weights_sum).unsqueeze(-1) * bg_color
                     depth = torch.clamp(depth - nears, min=0) / (fars - nears)
+                    dex_depth = torch.clamp(dex_depth - nears, min=0) / (fars - nears)
+                    
                     images.append(image.view(*prefix, 3))
                     depths.append(depth.view(*prefix))
-            
+                    dex_depths.append(dex_depth.view(*prefix))
+                    
                 depth = torch.stack(depths, axis=0) # [K, B, N]
+                dex_depth = torch.stack(dex_depths, axis=0) # [K, B, N]
                 image = torch.stack(images, axis=0) # [K, B, N, 3]
 
             else:
 
-                weights_sum, depth, image = raymarching.composite_rays_train(sigmas, rgbs, deltas, rays, T_thresh)
+                weights_sum, depth, image, dex_depth = raymarching.composite_rays_train(sigmas, rgbs, deltas, rays, T_thresh)
                 image = image + (1 - weights_sum).unsqueeze(-1) * bg_color
                 depth = torch.clamp(depth - nears, min=0) / (fars - nears)
+                dex_depth = torch.clamp(dex_depth - nears, min=0) / (fars - nears)
                 image = image.view(*prefix, 3)
                 depth = depth.view(*prefix)
+                dex_depth = dex_depth.view(*prefix)
             
             results['weights_sum'] = weights_sum
 

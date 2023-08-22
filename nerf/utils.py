@@ -441,8 +441,11 @@ class Trainer(object):
         self.log(f'[INFO] #parameters: {sum([p.numel() for p in model.parameters() if p.requires_grad])}')
 
         # if bg model available, load it 
-        self.load_bg_checkpoint(self.bg_checkpoint)
-        
+        load_bg_success = self.load_bg_checkpoint(self.bg_checkpoint)
+        if not load_bg_success:
+            self.bg_model = None    # if we couldn't load the model from checkpoint here, we don't use it
+            self.log("[WARNING] Couldn't load bg model from checkpoint, not using it.")
+
         if self.workspace is not None:
             if self.use_checkpoint == "scratch":
                 self.log("[INFO] Training from scratch ...")
@@ -1099,13 +1102,34 @@ class Trainer(object):
     
     
     def load_bg_checkpoint(self,checkpoint=None):
+        success = False
         if checkpoint is not None and self.bg_model is not None:
             checkpoint_dict = torch.load(checkpoint, map_location=self.device)
-            self.bg_model.load_state_dict(checkpoint_dict['model'], strict=False)
+
+            if 'model' not in checkpoint_dict:
+                self.bg_model.load_state_dict(checkpoint_dict)
+                self.log("[INFO] loaded model.")
+
+            missing_keys, unexpected_keys = self.bg_model.load_state_dict(checkpoint_dict['model'], strict=False)
+
             self.log(f"[INFO] loaded background model from {checkpoint}.")
+
+            if len(missing_keys) > 0:
+                self.log(f"[WARN] missing keys: {missing_keys}")
+            if len(unexpected_keys) > 0:
+                self.log(f"[WARN] unexpected keys: {unexpected_keys}")   
+
+            if self.bg_model.cuda_ray:
+                if 'mean_count' in checkpoint_dict:
+                    self.bg_model.mean_count = checkpoint_dict['mean_count']
+                if 'mean_density' in checkpoint_dict:
+                    self.bg_model.mean_density = checkpoint_dict['mean_density']
+
+            success = True
         else:
             self.log(f"[WARN] no background model loaded.")
     
+        return success
     def load_checkpoint(self, checkpoint=None, model_only=False):
         if checkpoint is None:
             checkpoint_list = sorted(glob.glob(f'{self.ckpt_path}/{self.name}_ep*.pth'))

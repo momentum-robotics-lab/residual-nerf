@@ -102,7 +102,7 @@ class NeRFNetwork(NeRFRenderer):
         bg_raw_color = None
         if bg_model is not None:
             bg_sigma, bg_color, bg_raw_sigma, bg_raw_color = bg_model(x,d,return_features=True)
-        
+
         x = self.encoder(x, bound=self.bound)
 
         h = x
@@ -111,10 +111,11 @@ class NeRFNetwork(NeRFRenderer):
             if l != self.num_layers - 1:
                 h = F.relu(h, inplace=True)
 
-        raw_sigma = h.clone()
+        raw_sigma = h[..., 0].clone()
         
         if bg_raw_sigma is not None:
-            h = h + bg_raw_sigma
+            h[..., 0] = h[..., 0] + bg_raw_sigma
+            # h = bg_raw_sigma
         
         sigma = trunc_exp(h[..., 0])
         geo_feat = h[..., 1:]
@@ -132,6 +133,7 @@ class NeRFNetwork(NeRFRenderer):
         # sigmoid activation for rgb
         if bg_raw_color is not None:
             h = h + bg_raw_color
+            # h = bg_raw_color
         
         color = torch.sigmoid(h)
 
