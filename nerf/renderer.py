@@ -386,6 +386,11 @@ class NeRFRenderer(nn.Module):
         results['depth'] = depth
         results['image'] = image
         results['dex_depth'] = dex_depth
+        results['rgbs'] = rgbs
+        results['sigmas'] = sigmas
+
+        results['xyzs'] = xyzs
+        results['dirs'] = dirs
 
         return results
 
@@ -552,6 +557,7 @@ class NeRFRenderer(nn.Module):
 
 
     def render(self, rays_o, rays_d, staged=False, max_ray_batch=4096,bg_model=None,D_thresh=0.0, **kwargs):
+
         # rays_o, rays_d: [B, N, 3], assumes B == 1
         # return: pred_rgb: [B, N, 3]
         if self.cuda_ray:
@@ -563,6 +569,7 @@ class NeRFRenderer(nn.Module):
         device = rays_o.device
         # never stage when cuda_ray
         if staged and not self.cuda_ray:
+            print("why are we here?")
             depth = torch.empty((B, N), device=device)
             image = torch.empty((B, N, 3), device=device)
 
@@ -581,4 +588,6 @@ class NeRFRenderer(nn.Module):
 
         else:
             results = _run(rays_o, rays_d,bg_model=bg_model, D_thresh=D_thresh, **kwargs)
+
+            
         return results

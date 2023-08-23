@@ -69,6 +69,7 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_name',type=str,default='nerf',help='wandb name')
     parser.add_argument('--wandb_project',type=str,default='nerf',help='wandb project')
     parser.add_argument('--eval_interval',type=int,default=50,help='eval interval')
+    parser.add_argument('--combine_net',action='store_true',help='combine net')
     opt = parser.parse_args()
 
     if opt.wandb:
@@ -125,6 +126,19 @@ if __name__ == '__main__':
         bg_model = None
     
 
+    if opt.combine_net:
+        combine_model = NeRFNetwork(
+            encoding="hashgrid",
+            bound=opt.bound,
+            cuda_ray=opt.cuda_ray,
+            density_scale=1,
+            min_near=opt.min_near,
+            density_thresh=opt.density_thresh,
+            bg_radius=opt.bg_radius,
+        )
+    else:
+        combine_model = None
+
     criterion = torch.nn.MSELoss(reduction='none')
     #criterion = partial(huber_loss, reduction='none')
     #criterion = torch.nn.HuberLoss(reduction='none', beta=0.1) # only available after torch 1.10 ?
@@ -134,7 +148,7 @@ if __name__ == '__main__':
     if opt.test:
         
         metrics = [PSNRMeter(), LPIPSMeter(device=device)]
-        trainer = Trainer('ngp_'+opt.type, opt, model, device=device, workspace=opt.workspace, criterion=criterion, fp16=opt.fp16, metrics=metrics, use_checkpoint=opt.ckpt)
+        trainer = Trainer('ngp_'+opt.type, opt, model, device=device, workspace=opt.workspace, criterion=criterion, fp16=opt.fp16, metrics=metrics, use_checkpoint=opt.ckpt,bg_model=bg_model)
 
         if opt.gui:
             gui = NeRFGUI(opt, trainer)
@@ -162,7 +176,7 @@ if __name__ == '__main__':
         metrics = [PSNRMeter(), LPIPSMeter(device=device)]
         trainer = Trainer('ngp_'+opt.type, opt, model, device=device, workspace=opt.workspace, optimizer=optimizer, criterion=criterion, ema_decay=0.95, 
                           fp16=opt.fp16, lr_scheduler=scheduler, scheduler_update_every_step=True, metrics=metrics, use_checkpoint=opt.ckpt, eval_interval=opt.eval_interval,use_wandb=opt.wandb
-                          , bg_cktp = opt.bg_ckpt, bg_model=bg_model)
+                          , bg_cktp = opt.bg_ckpt, bg_model=bg_model,combine_model=combine_model)
 
         if opt.gui:
             gui = NeRFGUI(opt, trainer, train_loader)
