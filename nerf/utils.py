@@ -622,7 +622,6 @@ class Trainer(object):
         if bg_color is not None:
             bg_color = bg_color.to(self.device)
 
-        print("before render",D_thresh)
         outputs = self.model.render(rays_o, rays_d, staged=True, bg_color=bg_color, perturb=perturb,bg_model=self.bg_model,D_thresh=D_thresh, **vars(self.opt))
 
         pred_rgb = outputs['image'].reshape(-1, H, W, 3)
@@ -839,7 +838,6 @@ class Trainer(object):
         with torch.no_grad():
             with torch.cuda.amp.autocast(enabled=self.fp16):
                 # here spp is used as perturb random seed! (but not perturb the first sample)
-                print("before test_step",D_thresh)
                 preds, preds_depth, preds_dex_depth = self.test_step(data, bg_color=bg_color, perturb=False if spp == 1 else spp,return_dex=True,D_thresh=D_thresh)
 
         if self.ema is not None:

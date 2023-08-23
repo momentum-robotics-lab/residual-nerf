@@ -290,7 +290,7 @@ class _composite_rays_train(Function):
 
         _backend.composite_rays_train_backward(grad_weights_sum, grad_image, sigmas, rgbs, deltas, rays, weights_sum, image, M, N, T_thresh, grad_sigmas, grad_rgbs)
 
-        return grad_sigmas, grad_rgbs, None, None, None
+        return grad_sigmas, grad_rgbs, None, None, None, None, None
 
 
 composite_rays_train = _composite_rays_train.apply
@@ -373,7 +373,6 @@ class _composite_rays(Function):
         '''
         if dex_depth is None:
             dex_depth = torch.zeros_like(depth)
-        print("before backend:",D_thresh)
         _backend.composite_rays(n_alive, n_step, T_thresh, D_thresh, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth, dex_depth, image)
         return tuple()
 

@@ -315,7 +315,7 @@ class NeRFRenderer(nn.Module):
 
             else:
 
-                weights_sum, depth, image, dex_depth = raymarching.composite_rays_train(sigmas, rgbs, deltas, rays, T_thresh,D_thresh=D_thresh,return_dex=True)
+                weights_sum, depth, image, dex_depth = raymarching.composite_rays_train(sigmas, rgbs, deltas, rays, T_thresh,D_thresh,True)
                 image = image + (1 - weights_sum).unsqueeze(-1) * bg_color
                 depth = torch.clamp(depth - nears, min=0) / (fars - nears)
                 dex_depth = torch.clamp(dex_depth - nears, min=0) / (fars - nears)
@@ -366,7 +366,6 @@ class NeRFRenderer(nn.Module):
                 # rgbs = self.color(xyzs, dirs, **density_outputs)
                 sigmas = self.density_scale * sigmas
 
-                print("before calling composite rays",D_thresh)
                 raymarching.composite_rays(n_alive, n_step, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth,dex_depth, image, T_thresh,D_thresh)
                 
                 dex_depth[dex_depth==dex_init] = 0.0
@@ -555,7 +554,6 @@ class NeRFRenderer(nn.Module):
     def render(self, rays_o, rays_d, staged=False, max_ray_batch=4096,bg_model=None,D_thresh=0.0, **kwargs):
         # rays_o, rays_d: [B, N, 3], assumes B == 1
         # return: pred_rgb: [B, N, 3]
-        print("in render",D_thresh)
         if self.cuda_ray:
             _run = self.run_cuda
         else:
@@ -572,7 +570,6 @@ class NeRFRenderer(nn.Module):
                 head = 0
                 while head < N:
                     tail = min(head + max_ray_batch, N)
-                    print("before backend", D_thresh)
                     results_ = _run(rays_o[b:b+1, head:tail], rays_d[b:b+1, head:tail],bg_model=bg_model,D_thresh=D_thresh, **kwargs)
                     depth[b:b+1, head:tail] = results_['depth']
                     image[b:b+1, head:tail] = results_['image']
@@ -583,5 +580,5 @@ class NeRFRenderer(nn.Module):
             results['image'] = image
 
         else:
-            results = _run(rays_o, rays_d,bg_model=bg_model, **kwargs)
+            results = _run(rays_o, rays_d,bg_model=bg_model, D_thresh=D_thresh, **kwargs)
         return results

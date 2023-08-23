@@ -128,7 +128,6 @@ class NeRFGUI:
             starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
             starter.record()
 
-            print("before going out of gui:",self.dex_thresh)
             outputs = self.trainer.test_gui(self.cam.pose, self.cam.intrinsics, self.W, self.H, self.bg_color, self.spp, self.downscale,D_thresh=self.dex_thresh)
 
             ender.record()
