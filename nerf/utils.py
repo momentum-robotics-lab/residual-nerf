@@ -340,7 +340,8 @@ class Trainer(object):
                  scheduler_update_every_step=False, # whether to call scheduler.step() after every train step
                  use_wandb=False,
                  bg_cktp = None,
-                 bg_model = None
+                 bg_model = None,
+                 combine_model = None,
                  ):
         
         self.name = name
@@ -372,7 +373,10 @@ class Trainer(object):
         model.to(self.device)
         if bg_model is not None:
             bg_model.to(self.device)
-            
+        
+        if combine_model is not None:
+            combine_model.to(self.device)
+
         if self.world_size > 1:
             model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank])
@@ -380,9 +384,14 @@ class Trainer(object):
             if bg_model is not None:
                 bg_model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(bg_model)
                 bg_model = torch.nn.parallel.DistributedDataParallel(bg_model, device_ids=[local_rank])
+            
+            if combine_model is not None:
+                combine_model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(combine_model)
+                combine_model = torch.nn.parallel.DistributedDataParallel(combine_model, device_ids=[local_rank])
                 
         self.model = model
         self.bg_model = bg_model
+        self.combine_model = combine_model
 
         if isinstance(criterion, nn.Module):
             criterion.to(self.device)
@@ -397,18 +406,24 @@ class Trainer(object):
             self.optimizer = optim.Adam(self.model.parameters(), lr=0.001, weight_decay=5e-4) # naive adam
         else:
             self.optimizer = optimizer(self.model)
+        
+        if self.combine_model is not None:
+            self.combine_optimizer = optim.Adam(self.combine_model.parameters(),lr=0.001,weight_decay=5e-4)
+            self.combine_lr_scheduler = optim.lr_scheduler.LambdaLR(self.combine_optimizer, lr_lambda=lambda epoch: 1) # fake scheduler
 
         if lr_scheduler is None:
             self.lr_scheduler = optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=lambda epoch: 1) # fake scheduler
         else:
             self.lr_scheduler = lr_scheduler(self.optimizer)
 
+        
         if ema_decay is not None:
             self.ema = ExponentialMovingAverage(self.model.parameters(), decay=ema_decay)
         else:
             self.ema = None
 
         self.scaler = torch.cuda.amp.GradScaler(enabled=self.fp16)
+        self.combined_scalar = torch.cuda.amp.GradScaler(enabled=self.fp16)
 
         # variable init
         self.epoch = 0
@@ -534,9 +549,21 @@ class Trainer(object):
         outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=bg_color, perturb=True,bg_model=self.bg_model, force_all_rays=False if self.opt.patch_size == 1 else True, **vars(self.opt))
         # outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=bg_color, perturb=True, force_all_rays=True, **vars(self.opt))
         pred_rgb = outputs['image']
+        
 
         # MSE loss
         loss = self.criterion(pred_rgb, gt_rgb).mean(-1) # [B, N, 3] --> [B, N]
+        
+        combined_loss_total = None
+        if self.combine_model is not None:
+            supervise_xyzs = outputs['xyzs']
+            superivse_dirs = outputs['dirs']
+            combined_sigmas, combines_rgbs = self.combine_model(supervise_xyzs,superivse_dirs)
+
+            combined_loss_rgbs = self.criterion(combines_rgbs,outputs['rgbs']).mean(-1)
+            combined_loss_sigmas = self.criterion(combined_sigmas,outputs['sigmas']).mean(-1)
+            combined_loss_total = combined_loss_rgbs + combined_loss_sigmas
+            combined_loss_total = combined_loss_total.mean()
 
         # patch-based rendering
         if self.opt.patch_size > 1:
@@ -578,13 +605,13 @@ class Trainer(object):
             self.error_map[index] = error_map
 
         loss = loss.mean()
-
+    
         # extra loss
         # pred_weights_sum = outputs['weights_sum'] + 1e-8
         # loss_ws = - 1e-1 * pred_weights_sum * torch.log(pred_weights_sum) # entropy to encourage weights_sum to be 0 or 1.
         # loss = loss + loss_ws.mean()
 
-        return pred_rgb, gt_rgb, loss
+        return pred_rgb, gt_rgb, loss, combined_loss_total
 
     def eval_step(self, data):
 
@@ -754,6 +781,7 @@ class Trainer(object):
         self.model.train()
 
         total_loss = torch.tensor([0], dtype=torch.float32, device=self.device)
+        total_combined_loss = torch.tensor([0], dtype=torch.float32, device=self.device)
         
         loader = iter(train_loader)
 
@@ -780,31 +808,49 @@ class Trainer(object):
             self.optimizer.zero_grad()
 
             with torch.cuda.amp.autocast(enabled=self.fp16):
-                preds, truths, loss = self.train_step(data)
+                preds, truths, loss, combined_loss = self.train_step(data)
          
             self.scaler.scale(loss).backward()
             self.scaler.step(self.optimizer)
             self.scaler.update()
+
+            if self.combine_model is not None:
+                if combined_loss is not None:
+                    self.combined_scalar.scale(combined_loss).backward()
+                    self.combined_scalar.step(self.combine_optimizer)
+                    self.combined_scalar.update()
+                    print(combined_loss)
             
             if self.scheduler_update_every_step:
                 self.lr_scheduler.step()
+                self.combine_lr_scheduler.step()
 
             total_loss += loss.detach()
+
+            if combined_loss is not None:
+                total_combined_loss += combined_loss.detach()
 
         if self.ema is not None:
             self.ema.update()
 
         average_loss = total_loss.item() / step
+        if total_combined_loss is not None:
+            average_combined_loss = total_combined_loss.item() / step
+        else:
+            average_combined_loss = None 
 
         if not self.scheduler_update_every_step:
             if isinstance(self.lr_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
                 self.lr_scheduler.step(average_loss)
+                self.combine_lr_scheduler.step(average_combined_loss)
             else:
                 self.lr_scheduler.step()
+                self.combine_lr_scheduler.step()
 
         outputs = {
             'loss': average_loss,
             'lr': self.optimizer.param_groups[0]['lr'],
+            'combined_loss': average_combined_loss,
         }
         
         return outputs
@@ -869,6 +915,7 @@ class Trainer(object):
         self.log(f"==> Start Training Epoch {self.epoch}, lr={self.optimizer.param_groups[0]['lr']:.6f} ...")
 
         total_loss = 0
+        total_combined_loss = 0
         if self.local_rank == 0 and self.report_metric_at_train:
             for metric in self.metrics:
                 metric.clear()
@@ -898,17 +945,31 @@ class Trainer(object):
 
             self.optimizer.zero_grad()
             with torch.cuda.amp.autocast(enabled=self.fp16):
-                preds, truths, loss = self.train_step(data)
+                preds, truths, loss, combined_loss = self.train_step(data)
 
-            self.scaler.scale(loss).backward()
+            self.scaler.scale(loss).backward(retain_graph=True)
             self.scaler.step(self.optimizer)
             self.scaler.update()
 
+            combined_loss_val = None 
+            if combined_loss is not None:
+                self.combined_scalar.scale(combined_loss).backward()
+                self.combined_scalar.step(self.combine_optimizer)
+                self.combined_scalar.update()
+
+                combined_loss_val = combined_loss.item()
+                total_combined_loss += combined_loss_val
+
             if self.scheduler_update_every_step:
                 self.lr_scheduler.step()
+                if self.combine_model is not None:
+                    self.combine_lr_scheduler.step()
 
             loss_val = loss.item()
             total_loss += loss_val
+            # print(combined_loss_val)
+
+            
 
             if self.local_rank == 0:
                 if self.report_metric_at_train:
@@ -923,6 +984,8 @@ class Trainer(object):
                 psrn_tool.update(preds,truths)
                 if self.use_wandb:
                     wandb.log({"train/loss": loss_val, "train/lr": self.optimizer.param_groups[0]['lr'], "train/psnr": psrn_tool.measure()}, step=self.global_step)
+                    if combined_loss_val is not None:
+                        wandb.log({"train/combined_loss": combined_loss_val}, step=self.global_step)
 
                 if self.scheduler_update_every_step:
                     pbar.set_description(f"loss={loss_val:.4f} ({total_loss/self.local_step:.4f}), psnr={psrn_tool.measure():.4f}, lr={self.optimizer.param_groups[0]['lr']:.6f}")
