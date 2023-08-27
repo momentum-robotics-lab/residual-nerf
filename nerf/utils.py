@@ -838,7 +838,8 @@ class Trainer(object):
             
             if self.scheduler_update_every_step:
                 self.lr_scheduler.step()
-                self.combine_lr_scheduler.step()
+                if self.combine_model is not None:
+                    self.combine_lr_scheduler.step()
 
             total_loss += loss.detach()
 
