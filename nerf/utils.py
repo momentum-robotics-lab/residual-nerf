@@ -342,6 +342,7 @@ class Trainer(object):
                  bg_cktp = None,
                  bg_model = None,
                  combine_model = None,
+                 combined_rounds=10,
                  ):
         
         self.name = name
@@ -367,7 +368,7 @@ class Trainer(object):
         self.device = device if device is not None else torch.device(f'cuda:{local_rank}' if torch.cuda.is_available() else 'cpu')
         self.console = Console()
         self.use_wandb = use_wandb
-
+        self.combined_rounds = combined_rounds
               
         
         model.to(self.device)
@@ -558,12 +559,19 @@ class Trainer(object):
         if self.combine_model is not None:
             supervise_xyzs = outputs['xyzs']
             superivse_dirs = outputs['dirs']
-            combined_sigmas, combines_rgbs = self.combine_model(supervise_xyzs,superivse_dirs)
+            combined_sigmas, combines_rgbs, combined_raw_sigmas, combined_raw_rgbs  = self.combine_model(supervise_xyzs,superivse_dirs,return_features=True)
 
-            combined_loss_rgbs = self.criterion(combines_rgbs,outputs['rgbs']).mean(-1)
-            combined_loss_sigmas = self.criterion(combined_sigmas,outputs['sigmas']).mean(-1)
-            combined_loss_total = combined_loss_rgbs + combined_loss_sigmas
-            combined_loss_total = combined_loss_total.mean()
+            combined_loss_rgbs = self.criterion(combined_raw_rgbs,outputs['rgbs_raw']).mean(-1)
+            combined_loss_sigmas = self.criterion(combined_raw_sigmas,outputs['sigmas_raw']).mean(-1)
+
+            
+            # combined_loss_total = combined_loss_rgbs + combined_loss_sigmas
+            combined_loss_total = combined_loss_rgbs.mean() + combined_loss_sigmas.mean()
+            # combined_loss_total = combined_loss_total.mean()
+
+            if self.use_wandb:
+                wandb.log({"train/combined_loss_rgbs": combined_loss_rgbs.mean(),"train/combined_loss_sigmas": combined_loss_sigmas.mean(),"train/combined_loss_total": combined_loss_total.mean()})
+
 
         # patch-based rendering
         if self.opt.patch_size > 1:
@@ -703,10 +711,17 @@ class Trainer(object):
             if self.workspace is not None and self.local_rank == 0:
                 self.save_checkpoint(full=True, best=False)
 
+                if self.combine_model is not None:
+                    self.save_combined_checkpoint(self.combine_model,full=True,best=False)
+
             if self.epoch % self.eval_interval == 0:
                 self.evaluate_one_epoch(valid_loader)
                 self.save_checkpoint(full=False, best=True)
 
+        if self.combine_model is not None:
+            for epoch in range(self.combined_rounds):
+                self.train_one_epoch(train_loader,combined_only=True)
+        
         if self.use_tensorboardX and self.local_rank == 0:
             self.writer.close()
 
@@ -819,7 +834,7 @@ class Trainer(object):
                     self.combined_scalar.scale(combined_loss).backward()
                     self.combined_scalar.step(self.combine_optimizer)
                     self.combined_scalar.update()
-                    print(combined_loss)
+                    
             
             if self.scheduler_update_every_step:
                 self.lr_scheduler.step()
@@ -911,7 +926,7 @@ class Trainer(object):
 
         return outputs
 
-    def train_one_epoch(self, loader):
+    def train_one_epoch(self, loader,combined_only = False):
         self.log(f"==> Start Training Epoch {self.epoch}, lr={self.optimizer.param_groups[0]['lr']:.6f} ...")
 
         total_loss = 0
@@ -947,9 +962,10 @@ class Trainer(object):
             with torch.cuda.amp.autocast(enabled=self.fp16):
                 preds, truths, loss, combined_loss = self.train_step(data)
 
-            self.scaler.scale(loss).backward(retain_graph=True)
-            self.scaler.step(self.optimizer)
-            self.scaler.update()
+            if not combined_only:
+                self.scaler.scale(loss).backward(retain_graph=True)
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
 
             combined_loss_val = None 
             if combined_loss is not None:
@@ -959,6 +975,10 @@ class Trainer(object):
 
                 combined_loss_val = combined_loss.item()
                 total_combined_loss += combined_loss_val
+
+                for name, param in self.combine_model.named_parameters():
+                    if param.grad is not None:
+                        print(f'{name}: {param.grad.norm()}')
 
             if self.scheduler_update_every_step:
                 self.lr_scheduler.step()
@@ -984,8 +1004,7 @@ class Trainer(object):
                 psrn_tool.update(preds,truths)
                 if self.use_wandb:
                     wandb.log({"train/loss": loss_val, "train/lr": self.optimizer.param_groups[0]['lr'], "train/psnr": psrn_tool.measure()}, step=self.global_step)
-                    if combined_loss_val is not None:
-                        wandb.log({"train/combined_loss": combined_loss_val}, step=self.global_step)
+
 
                 if self.scheduler_update_every_step:
                     pbar.set_description(f"loss={loss_val:.4f} ({total_loss/self.local_step:.4f}), psnr={psrn_tool.measure():.4f}, lr={self.optimizer.param_groups[0]['lr']:.6f}")
@@ -1178,7 +1197,41 @@ class Trainer(object):
                     torch.save(state, self.best_path)
             else:
                 self.log(f"[WARN] no evaluated results found, skip saving best checkpoint.")
-    
+
+    def save_combined_checkpoint(self, model, full=False, best=False, remove_old=True):
+
+        if model is None:
+            self.log(f"[WARN] no model found, skip saving combined model to checkpoint.")
+        else:
+            
+            state = {
+                'epoch': self.epoch,
+                'global_step': self.global_step,
+                'stats': self.stats,
+            }
+
+            if model.cuda_ray:
+                state['mean_count'] = model.mean_count
+                state['mean_density'] = model.mean_density
+
+            if full:
+                state['optimizer'] = self.combine_optimizer.state_dict()
+                state['lr_scheduler'] = self.lr_scheduler.state_dict()
+                state['scaler'] = self.scaler.state_dict()
+                if self.ema is not None:
+                    state['ema'] = self.ema.state_dict()
+            
+            if not best:
+
+                state['model'] = model.state_dict()
+
+                file_path = os.path.join(self.workspace,'combined.pth')
+
+                torch.save(state, file_path)
+
+
+
+
     
     def load_bg_checkpoint(self,checkpoint=None):
         success = False

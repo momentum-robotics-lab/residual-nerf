@@ -70,6 +70,8 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_project',type=str,default='nerf',help='wandb project')
     parser.add_argument('--eval_interval',type=int,default=50,help='eval interval')
     parser.add_argument('--combine_net',action='store_true',help='combine net')
+    parser.add_argument('--combined_ckpt',type=str,default='combined_model.pth',help='where the combine model will be saved')
+    parser.add_argument('--combined_rounds',type=int,default=10,help='how many rounds to train the combined model only')
     opt = parser.parse_args()
 
     if opt.wandb:
@@ -148,7 +150,7 @@ if __name__ == '__main__':
     if opt.test:
         
         metrics = [PSNRMeter(), LPIPSMeter(device=device)]
-        trainer = Trainer('ngp_'+opt.type, opt, model, device=device, workspace=opt.workspace, criterion=criterion, fp16=opt.fp16, metrics=metrics, use_checkpoint=opt.ckpt,bg_model=bg_model)
+        trainer = Trainer('ngp_'+opt.type, opt, model, device=device, workspace=opt.workspace, criterion=criterion, fp16=opt.fp16, metrics=metrics, use_checkpoint=opt.ckpt,bg_model=bg_model,combined_rounds=opt.combined_rounds)
 
         if opt.gui:
             gui = NeRFGUI(opt, trainer)

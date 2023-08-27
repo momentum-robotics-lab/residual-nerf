@@ -10,8 +10,7 @@ else
     export CUDA_VISIBLE_DEVICES=$1
 fi
 
-export BG_CHECKPOINT='lego_bg/checkpoints/ngp_bg_ep0100.pth'
-export ITERATIONS=10000
+export ITERATIONS=1000
 # second argument is number of iterations 
 if [ $# -lt 2 ]
   then
@@ -22,8 +21,5 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/chinese_snack --workspace snack_combined -O --bound 8 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type wrap  --combine_net --wandb --wandb_project chinese_snack --wandb_name snack_normal_combined_loss  
-
-# --gui 
-# --ckpt scratch \
-# --bg_ckpt $BG_CHECKPOINT 
+python3 main_nerf.py data/lego --test --workspace lego_bg -O --bound 1 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type bg --ckpt scratch --combine_net 
+# --wandb --wandb_name lego_bg_combine --wandb_project lego 

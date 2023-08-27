@@ -72,6 +72,7 @@ class NeRFRenderer(nn.Module):
         self.bound = bound
         self.cascade = 1 + math.ceil(math.log2(bound))
         self.grid_size = 128
+        # self.grid_size = 256
         self.density_scale = density_scale
         self.min_near = min_near
         self.density_thresh = density_thresh
@@ -285,7 +286,7 @@ class NeRFRenderer(nn.Module):
             xyzs, dirs, deltas, rays = raymarching.march_rays_train(rays_o, rays_d, self.bound, self.density_bitfield, self.cascade, self.grid_size, nears, fars, counter, self.mean_count, perturb, 128, force_all_rays, dt_gamma, max_steps)
 
             #plot_pointcloud(xyzs.reshape(-1, 3).detach().cpu().numpy())
-            sigmas, rgbs = self(xyzs, dirs,bg_model=bg_model)
+            sigmas, rgbs, sigmas_raw, rgbs_raw = self(xyzs, dirs,bg_model=bg_model,return_features=True)
             # density_outputs = self.density(xyzs) # [M,], use a dict since it may include extra things, like geo_feat for rgb.
             # sigmas = density_outputs['sigma']
             # rgbs = self.color(xyzs, dirs, **density_outputs)
@@ -360,7 +361,7 @@ class NeRFRenderer(nn.Module):
                 n_step = max(min(N // n_alive, 8), 1)
 
                 xyzs, dirs, deltas = raymarching.march_rays(n_alive, n_step, rays_alive, rays_t, rays_o, rays_d, self.bound, self.density_bitfield, self.cascade, self.grid_size, nears, fars, 128, perturb if step == 0 else False, dt_gamma, max_steps)
-                sigmas, rgbs = self(xyzs, dirs,bg_model=bg_model)
+                sigmas, rgbs, sigmas_raw, rgbs_raw = self(xyzs, dirs,bg_model=bg_model,return_features=True)
                 # density_outputs = self.density(xyzs) # [M,], use a dict since it may include extra things, like geo_feat for rgb.
                 # sigmas = density_outputs['sigma']
                 # rgbs = self.color(xyzs, dirs, **density_outputs)
@@ -388,6 +389,8 @@ class NeRFRenderer(nn.Module):
         results['dex_depth'] = dex_depth
         results['rgbs'] = rgbs
         results['sigmas'] = sigmas
+        results['sigmas_raw'] = sigmas_raw
+        results['rgbs_raw'] = rgbs_raw
 
         results['xyzs'] = xyzs
         results['dirs'] = dirs
@@ -569,7 +572,6 @@ class NeRFRenderer(nn.Module):
         device = rays_o.device
         # never stage when cuda_ray
         if staged and not self.cuda_ray:
-            print("why are we here?")
             depth = torch.empty((B, N), device=device)
             image = torch.empty((B, N, 3), device=device)
 
