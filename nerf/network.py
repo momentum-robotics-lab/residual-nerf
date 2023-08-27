@@ -92,7 +92,7 @@ class NeRFNetwork(NeRFRenderer):
             self.bg_net = None
 
 
-    def forward(self, x, d,bg_model=None,return_features=False):
+    def forward(self, x, d,bg_model=None,return_features=False,return_bg_raw=False):
         # x: [N, 3], in [-bound, bound]
         # d: [N, 3], nomalized in [-1, 1]
         # sigma
@@ -100,6 +100,8 @@ class NeRFNetwork(NeRFRenderer):
                
         bg_raw_sigma = None 
         bg_raw_color = None
+        bg_sigma = None 
+        bg_color = None
         if bg_model is not None:
             bg_sigma, bg_color, bg_raw_sigma, bg_raw_color = bg_model(x,d,return_features=True)
 
@@ -118,6 +120,9 @@ class NeRFNetwork(NeRFRenderer):
             # h = bg_raw_sigma
         
         sigma = trunc_exp(h[..., 0])
+        # if bg_sigma is not None:
+        #     sigma = sigma + bg_sigma
+            
         geo_feat = h[..., 1:]
 
         # color
@@ -140,6 +145,11 @@ class NeRFNetwork(NeRFRenderer):
         result = (sigma, color)
         if return_features:
             result += (raw_sigma, raw_color)
+        
+        if return_bg_raw:
+            result += (bg_sigma,bg_color)
+
+                
         
         return result
 

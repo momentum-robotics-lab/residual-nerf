@@ -22,7 +22,7 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/chinese_snack --workspace snack_normal -O --bound 8 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type wrap --gui
-# --wandb --wandb_name snack_normal_r_8 --wandb_project chinese_snack 
+python3 main_nerf.py data/chinese_snack --workspace snack_normal -O --bound 1 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type wrap --ckpt scratch \
+--wandb --wandb_name snack_normal --wandb_project chinese_snack 
 # --wandb --wandb_name snack_combine --wandb_project chinese_snack \ 
 # --ckpt scratch 

@@ -238,7 +238,7 @@ march_rays_train = _march_rays_train.apply
 class _composite_rays_train(Function):
     @staticmethod
     @custom_fwd(cast_inputs=torch.float32)
-    def forward(ctx, sigmas, rgbs, deltas, rays, T_thresh=1e-4,D_thresh=10,return_dex=True):
+    def forward(ctx, sigmas, rgbs, deltas, rays, T_thresh=1e-4,D_thresh=10,return_dex=True,bg_sigmas=None,bg_rgbs=None):
         ''' composite rays' rgbs, according to the ray marching formula.
         Args:
             rgbs: float, [M, 3]
@@ -261,8 +261,13 @@ class _composite_rays_train(Function):
         depth = torch.empty(N, dtype=sigmas.dtype, device=sigmas.device)
         dex_depth = torch.empty(N, dtype=sigmas.dtype, device=sigmas.device)
         image = torch.empty(N, 3, dtype=sigmas.dtype, device=sigmas.device)
-
-        _backend.composite_rays_train_forward(sigmas, rgbs, deltas, rays, M, N, T_thresh,D_thresh, weights_sum, depth, dex_depth, image)
+        if bg_sigmas is None:
+            bg_sigmas = torch.zeros(N, dtype=sigmas.dtype, device=sigmas.device)
+        
+        if bg_rgbs is None:
+            bg_rgbs = torch.zeros(N, 3, dtype=sigmas.dtype, device=sigmas.device)
+        
+        _backend.composite_rays_train_forward(sigmas,bg_sigmas, rgbs,bg_rgbs, deltas, rays, M, N, T_thresh,D_thresh, weights_sum, depth, dex_depth, image)
 
         ctx.save_for_backward(sigmas, rgbs, deltas, rays, weights_sum, depth, image)
         ctx.dims = [M, N, T_thresh]
@@ -286,11 +291,12 @@ class _composite_rays_train(Function):
         M, N, T_thresh = ctx.dims
    
         grad_sigmas = torch.zeros_like(sigmas)
+        grad_bg_sigmas = torch.zeros_like(sigmas)
         grad_rgbs = torch.zeros_like(rgbs)
 
-        _backend.composite_rays_train_backward(grad_weights_sum, grad_image, sigmas, rgbs, deltas, rays, weights_sum, image, M, N, T_thresh, grad_sigmas, grad_rgbs)
+        _backend.composite_rays_train_backward(grad_weights_sum, grad_image, sigmas, rgbs, deltas, rays, weights_sum, image, M, N, T_thresh, grad_sigmas, grad_rgbs,grad_bg_sigmas)
 
-        return grad_sigmas, grad_rgbs, None, None, None, None, None
+        return grad_sigmas, grad_rgbs, None, None, None, None, None, None, None
 
 
 composite_rays_train = _composite_rays_train.apply
@@ -356,7 +362,7 @@ march_rays = _march_rays.apply
 class _composite_rays(Function):
     @staticmethod
     @custom_fwd(cast_inputs=torch.float32) # need to cast sigmas & rgbs to float
-    def forward(ctx, n_alive, n_step, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth, dex_depth, image, T_thresh=1e-2, D_thresh=-10):
+    def forward(ctx, n_alive, n_step, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth, dex_depth, image, T_thresh=1e-2, D_thresh=-10,bg_sigmas=None,bg_rgbs=None):
         ''' composite rays' rgbs, according to the ray marching formula. (for inference)
         Args:
             n_alive: int, number of alive rays
@@ -373,7 +379,14 @@ class _composite_rays(Function):
         '''
         if dex_depth is None:
             dex_depth = torch.zeros_like(depth)
-        _backend.composite_rays(n_alive, n_step, T_thresh, D_thresh, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth, dex_depth, image)
+            
+        if bg_sigmas is None:
+            bg_sigmas = torch.zeros_like(sigmas)
+        
+        if bg_rgbs is None:
+            bg_rgbs = torch.zeros_like(rgbs)
+            
+        _backend.composite_rays(n_alive, n_step, T_thresh, D_thresh, rays_alive, rays_t, sigmas, rgbs,bg_sigmas, bg_rgbs, deltas, weights_sum, depth, dex_depth, image)
         return tuple()
 
 

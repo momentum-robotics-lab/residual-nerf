@@ -550,7 +550,7 @@ class Trainer(object):
         outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=bg_color, perturb=True,bg_model=self.bg_model, force_all_rays=False if self.opt.patch_size == 1 else True, **vars(self.opt))
         # outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=bg_color, perturb=True, force_all_rays=True, **vars(self.opt))
         pred_rgb = outputs['image']
-        
+        # print if pred_rgb has NaNs or infs in it
 
         # MSE loss
         loss = self.criterion(pred_rgb, gt_rgb).mean(-1) # [B, N, 3] --> [B, N]
