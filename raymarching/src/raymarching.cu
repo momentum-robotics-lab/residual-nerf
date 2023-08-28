@@ -545,7 +545,7 @@ __global__ void kernel_composite_rays_train_forward(
     while (step < num_steps) {
 
 
-        if (!reached_bg && bg_sigmas[0] < D_thresh)
+        if (true)
         {   
             const scalar_t alpha = 1.0f - __expf(- sigmas[0] * deltas[0]);
             const scalar_t weight = alpha * T;
@@ -902,7 +902,7 @@ __global__ void kernel_composite_rays(
         // ray is terminated if delta == 0
         if (deltas[0] == 0) break;
         const scalar_t T = 1 - weight_sum;
-        if (!reached_bg && bg_sigmas[0] < D_thresh)
+        if (true)
         {   
             const scalar_t alpha = 1.0f - __expf(- sigmas[0] * deltas[0]);
             const scalar_t weight = alpha * T;

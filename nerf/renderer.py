@@ -291,6 +291,12 @@ class NeRFRenderer(nn.Module):
             # sigmas = density_outputs['sigma']
             # rgbs = self.color(xyzs, dirs, **density_outputs)
             sigmas = self.density_scale * sigmas
+            if bg_sigmas is None:
+                bg_sigmas = torch.zeros_like(sigmas)
+                    
+            if bg_rgbs is None:
+                bg_rgbs = torch.zeros_like(rgbs)
+                
             bg_sigmas = self.density_scale * bg_sigmas
 
             #print(f'valid RGB query ratio: {mask.sum().item() / mask.shape[0]} (total = {mask.sum().item()})')
@@ -366,6 +372,11 @@ class NeRFRenderer(nn.Module):
                 # sigmas = density_outputs['sigma']
                 # rgbs = self.color(xyzs, dirs, **density_outputs)
                 sigmas = self.density_scale * sigmas
+                if bg_sigmas is None:
+                    bg_sigmas = torch.zeros_like(sigmas)
+                    
+                if bg_rgbs is None:
+                    bg_rgbs = torch.zeros_like(rgbs)
                 bg_sigmas = self.density_scale * bg_sigmas
                 
                 raymarching.composite_rays(n_alive, n_step, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth,dex_depth, image, T_thresh,D_thresh)

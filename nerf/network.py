@@ -115,8 +115,8 @@ class NeRFNetwork(NeRFRenderer):
 
         raw_sigma = h[..., 0].clone()
         
-        if bg_raw_sigma is not None:
-            h[..., 0] = h[..., 0] + bg_raw_sigma
+        # if bg_raw_sigma is not None:
+        #     h[..., 0] = h[..., 0] + bg_raw_sigma
             # h = bg_raw_sigma
         
         sigma = trunc_exp(h[..., 0])
@@ -136,8 +136,8 @@ class NeRFNetwork(NeRFRenderer):
         
         raw_color = h.clone()
         # sigmoid activation for rgb
-        if bg_raw_color is not None:
-            h = h + bg_raw_color
+        # if bg_raw_color is not None:
+        #     h = h + bg_raw_color
             # h = bg_raw_color
         
         color = torch.sigmoid(h)

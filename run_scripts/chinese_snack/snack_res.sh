@@ -11,7 +11,7 @@ else
 fi
 
 export BG_CHECKPOINT='snack_bg/checkpoints/ngp_bg_ep0100.pth'
-export ITERATIONS=1000
+export ITERATIONS=10000
 # second argument is number of iterations 
 if [ $# -lt 2 ]
   then
