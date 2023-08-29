@@ -10,7 +10,7 @@ else
     export CUDA_VISIBLE_DEVICES=$1
 fi
 
-export ITERATIONS=1000
+export ITERATIONS=10000
 # second argument is number of iterations 
 if [ $# -lt 2 ]
   then
@@ -21,4 +21,6 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/lego --workspace lego_bg -O --bound 1 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type bg --ckpt scratch --combine_net --wandb --wandb_name lego_bg_combine --wandb_project lego 
+python3 main_nerf.py data/lego --workspace lego_bg -O --bound 1 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type bg  --test --gui
+# --ckpt scratch
+# --wandb --wandb_name lego_bg_combine --wandb_project lego 

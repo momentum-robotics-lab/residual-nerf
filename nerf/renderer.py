@@ -254,7 +254,7 @@ class NeRFRenderer(nn.Module):
         }
 
 
-    def run_cuda(self, rays_o, rays_d, dt_gamma=0, bg_color=None, perturb=False, force_all_rays=False, max_steps=1024, T_thresh=1e-4,D_thresh=0.0, bg_model=None,**kwargs):
+    def run_cuda(self, rays_o, rays_d, dt_gamma=0, bg_color=None, perturb=False, force_all_rays=False, max_steps=1024, T_thresh=1e-4,D_thresh=10.0, bg_model=None,**kwargs):
         # rays_o, rays_d: [B, N, 3], assumes B == 1
         # return: image: [B, N, 3], depth: [B, N]
         prefix = rays_o.shape[:-1]
@@ -322,13 +322,14 @@ class NeRFRenderer(nn.Module):
                 image = torch.stack(images, axis=0) # [K, B, N, 3]
 
             else:
-                weights_sum, depth, image, dex_depth = raymarching.composite_rays_train(sigmas, rgbs, deltas, rays, T_thresh,D_thresh,True,bg_sigmas,bg_rgbs)
+                weights_sum, depth, image, dex_depth = raymarching.composite_rays_train(sigmas, rgbs, deltas, rays, T_thresh,D_thresh,True,sigmas_raw,bg_rgbs)
                 image = image + (1 - weights_sum).unsqueeze(-1) * bg_color
                 depth = torch.clamp(depth - nears, min=0) / (fars - nears)
                 dex_depth = torch.clamp(dex_depth - nears, min=0) / (fars - nears)
                 image = image.view(*prefix, 3)
                 depth = depth.view(*prefix)
                 dex_depth = dex_depth.view(*prefix)
+            
             
             results['weights_sum'] = weights_sum
 
@@ -378,8 +379,7 @@ class NeRFRenderer(nn.Module):
                 if bg_rgbs is None:
                     bg_rgbs = torch.zeros_like(rgbs)
                 bg_sigmas = self.density_scale * bg_sigmas
-                
-                raymarching.composite_rays(n_alive, n_step, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth,dex_depth, image, T_thresh,D_thresh)
+                raymarching.composite_rays(n_alive, n_step, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth,dex_depth, image, T_thresh,D_thresh,sigmas_raw)
                 
                 dex_depth[dex_depth==dex_init] = 0.0
 
@@ -571,7 +571,7 @@ class NeRFRenderer(nn.Module):
         #print(f'[density grid] min={self.density_grid.min().item():.4f}, max={self.density_grid.max().item():.4f}, mean={self.mean_density:.4f}, occ_rate={(self.density_grid > 0.01).sum() / (128**3 * self.cascade):.3f} | [step counter] mean={self.mean_count}')
 
 
-    def render(self, rays_o, rays_d, staged=False, max_ray_batch=4096,bg_model=None,D_thresh=0.0, **kwargs):
+    def render(self, rays_o, rays_d, staged=False, max_ray_batch=4096,bg_model=None,d_thresh_force=None,D_thresh=10.0, **kwargs):
 
         # rays_o, rays_d: [B, N, 3], assumes B == 1
         # return: pred_rgb: [B, N, 3]
@@ -580,6 +580,9 @@ class NeRFRenderer(nn.Module):
         else:
             _run = self.run
 
+        if d_thresh_force is not None:
+            D_thresh = d_thresh_force
+            
         B, N = rays_o.shape[:2]
         device = rays_o.device
         # never stage when cuda_ray

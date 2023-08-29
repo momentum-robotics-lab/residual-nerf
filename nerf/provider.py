@@ -186,9 +186,9 @@ class NeRFDataset:
             # for colmap, manually split a valid set (the first frame).
             if self.mode == 'colmap':
                 if split == 'train':
-                    frames = frames[1:]
+                    frames = frames[10:]
                 elif split == 'val':
-                    frames = frames[:1]
+                    frames = frames[:10]
                 # else 'all' or 'trainval' : use all frames
             
             self.poses = []
@@ -197,7 +197,7 @@ class NeRFDataset:
                 f_path = os.path.join(self.root_path, f['file_path'])
                 if self.mode == 'blender' and '.' not in os.path.basename(f_path):
                     f_path += '.png' # so silly...
-
+                
                 # there are non-exist paths in fox...
                 if not os.path.exists(f_path):
                     continue
@@ -221,13 +221,15 @@ class NeRFDataset:
                     
                 image = image.astype(np.float32) / 255 # [H, W, 3/4]
                 
+                
                 if self.type == 'all':
                     self.poses.append(pose)
                     self.images.append(image)
+                
                 elif self.type == f['type']:
                     self.poses.append(pose)
                     self.images.append(image)
-            
+                        
         self.poses = torch.from_numpy(np.stack(self.poses, axis=0)) # [N, 4, 4]
         if self.images is not None:
             self.images = torch.from_numpy(np.stack(self.images, axis=0)) # [N, H, W, C]

@@ -22,5 +22,5 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/chinese_snack --workspace snack_res -O --bound 1 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type wrap --bg_ckpt $BG_CHECKPOINT \
---ckpt scratch --wandb --wandb_name snack_res_bg_only_thresh --wandb_project chinese_snack
+python3 main_nerf.py data/chinese_snack --workspace snack_res -O --bound 1 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type wrap --bg_ckpt $BG_CHECKPOINT --ckpt scratch \
+ --wandb --wandb_name snack_res_learn_combine --wandb_project chinese_snack

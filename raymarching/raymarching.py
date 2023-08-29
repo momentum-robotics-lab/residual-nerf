@@ -43,7 +43,7 @@ class _near_far_from_aabb(Function):
         fars = torch.empty(N, dtype=rays_o.dtype, device=rays_o.device)
 
         _backend.near_far_from_aabb(rays_o, rays_d, aabb, N, min_near, nears, fars)
-
+              
         return nears, fars
 
 near_far_from_aabb = _near_far_from_aabb.apply
@@ -268,6 +268,9 @@ class _composite_rays_train(Function):
             bg_rgbs = torch.zeros(N, 3, dtype=sigmas.dtype, device=sigmas.device)
         
         _backend.composite_rays_train_forward(sigmas,bg_sigmas, rgbs,bg_rgbs, deltas, rays, M, N, T_thresh,D_thresh, weights_sum, depth, dex_depth, image)
+
+        
+
 
         ctx.save_for_backward(sigmas, rgbs, deltas, rays, weights_sum, depth, image)
         ctx.dims = [M, N, T_thresh]

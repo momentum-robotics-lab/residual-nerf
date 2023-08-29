@@ -72,6 +72,7 @@ if __name__ == '__main__':
     parser.add_argument('--combine_net',action='store_true',help='combine net')
     parser.add_argument('--combined_ckpt',type=str,default='combined_model.pth',help='where the combine model will be saved')
     parser.add_argument('--combined_rounds',type=int,default=10,help='how many rounds to train the combined model only')
+    parser.add_argument('--d_thresh',default=5.0,type=float)
     opt = parser.parse_args()
 
     if opt.wandb:
@@ -185,11 +186,11 @@ if __name__ == '__main__':
             gui.render()
         
         else:
-            # valid_loader = NeRFDataset(opt, device=device, split='val', downscale=1,type=opt.type).dataloader()
+            valid_loader = NeRFDataset(opt, device=device, split='val', downscale=1,type=opt.type).dataloader()
             test_loader = NeRFDataset(opt, device=device, split='test',type=opt.type).dataloader()
 
             max_epoch = np.ceil(opt.iters / len(train_loader)).astype(np.int32)
-            trainer.train(train_loader, test_loader, max_epoch,opt=opt)
+            trainer.train(train_loader, valid_loader , max_epoch,opt=opt)
 
             if test_loader.has_gt:
                 trainer.evaluate(test_loader) # blender has gt, so evaluate it.

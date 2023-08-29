@@ -11,6 +11,7 @@ else
 fi
 
 export ITERATIONS=10000
+export BG_CHECKPOINT='lab_bg/checkpoints/ngp_bg_ep0081.pth'
 # second argument is number of iterations 
 if [ $# -lt 2 ]
   then
@@ -21,5 +22,6 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/clutter --workspace clutter_bg -O --bound 4 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type bg  --ckpt scratch
---wandb --wandb_name clutter_bg_bound_4 --wandb_project clutter 
+python3 main_nerf.py data/lab_test --workspace lab_res -O --bound 16 --scale 0.8 --iters $ITERATIONS --type wrap  --bg_ckpt $BG_CHECKPOINT \
+--ckpt scratch \
+--wandb --wandb_name lab_res --wandb_project lab 

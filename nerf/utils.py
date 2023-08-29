@@ -648,7 +648,7 @@ class Trainer(object):
         return pred_rgb, pred_depth, gt_rgb, loss
 
     # moved out bg_color and perturb for more flexible control...
-    def test_step(self, data, bg_color=None, perturb=False,return_dex = False,D_thresh = 0.0):  
+    def test_step(self, data, bg_color=None, perturb=False,return_dex = False,D_thresh = None):  
 
         rays_o = data['rays_o'] # [B, N, 3]
         rays_d = data['rays_d'] # [B, N, 3]
@@ -657,7 +657,8 @@ class Trainer(object):
         if bg_color is not None:
             bg_color = bg_color.to(self.device)
 
-        outputs = self.model.render(rays_o, rays_d, staged=True, bg_color=bg_color, perturb=perturb,bg_model=self.bg_model,D_thresh=D_thresh, **vars(self.opt))
+        
+        outputs = self.model.render(rays_o, rays_d, staged=True, bg_color=bg_color, perturb=perturb,bg_model=self.bg_model,d_thresh_force=D_thresh, **vars(self.opt))
 
         pred_rgb = outputs['image'].reshape(-1, H, W, 3)
         pred_depth = outputs['depth'].reshape(-1, H, W)
@@ -755,7 +756,7 @@ class Trainer(object):
             for i, data in enumerate(loader):
                 
                 with torch.cuda.amp.autocast(enabled=self.fp16):
-                    preds, preds_depth, preds_dex_depth = self.test_step(data,return_dex=True)
+                    preds, preds_depth, preds_dex_depth = self.test_step(data,return_dex=True,D_thresh=self.opt.d_thresh)
 
                 if self.opt.color_space == 'linear':
                     preds = linear_to_srgb(preds)
@@ -873,7 +874,7 @@ class Trainer(object):
 
     
     # [GUI] test on a single image
-    def test_gui(self, pose, intrinsics, W, H, bg_color=None, spp=1, downscale=1,D_thresh = 0.0):
+    def test_gui(self, pose, intrinsics, W, H, bg_color=None, spp=1, downscale=1,D_thresh = 10.0):
         
         # render resolution (may need downscale to for better frame rate)
         rH = int(H * downscale)

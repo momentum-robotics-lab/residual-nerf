@@ -45,6 +45,22 @@ class NeRFNetwork(NeRFRenderer):
             sigma_net.append(nn.Linear(in_dim, out_dim, bias=False))
 
         self.sigma_net = nn.ModuleList(sigma_net)
+        
+        combine_net = []
+        for l in range(num_layers):
+            if l == 0:
+                in_dim = self.in_dim
+            else:
+                in_dim = hidden_dim
+            
+            if l == num_layers - 1:
+                out_dim = 1 + self.geo_feat_dim # 1 sigma + 15 SH features for color
+            else:
+                out_dim = hidden_dim
+            
+            combine_net.append(nn.Linear(in_dim, out_dim, bias=False))
+
+        self.combine_net = nn.ModuleList(combine_net)
 
         # color network
         self.num_layers_color = num_layers_color        
@@ -107,6 +123,16 @@ class NeRFNetwork(NeRFRenderer):
 
         x = self.encoder(x, bound=self.bound)
 
+
+        h = x 
+        for l in range(self.num_layers):
+            h = self.combine_net[l](h)
+            if l != self.num_layers - 1:
+                h = F.relu(h, inplace=True)
+        
+        combine_param = trunc_exp(h[..., 0]) # [0-1]
+        
+
         h = x
         for l in range(self.num_layers):
             h = self.sigma_net[l](h)
@@ -115,11 +141,18 @@ class NeRFNetwork(NeRFRenderer):
 
         raw_sigma = h[..., 0].clone()
         
-        # if bg_raw_sigma is not None:
-        #     h[..., 0] = h[..., 0] + bg_raw_sigma
+
+        if bg_raw_sigma is not None:
+            # use combine_param to weigh between bg and fg
+            raw_sigma_combined = h[...,0] * combine_param + bg_raw_sigma * (1-combine_param)
+            
+            # raw_sigma_combined = h[..., 0] + bg_raw_sigma
             # h = bg_raw_sigma
-        
-        sigma = trunc_exp(h[..., 0])
+        else:
+            raw_sigma_combined = h[...,0]
+
+        # raw_sigma_combined = h[...,0]
+        sigma = trunc_exp(raw_sigma_combined)
         # if bg_sigma is not None:
         #     sigma = sigma + bg_sigma
             
@@ -136,11 +169,20 @@ class NeRFNetwork(NeRFRenderer):
         
         raw_color = h.clone()
         # sigmoid activation for rgb
-        # if bg_raw_color is not None:
+        # combine_param = combine_param.unsqueeze(-1).expand_as(h)
+        combine_param = torch.stack([combine_param,combine_param,combine_param],dim=-1)
+        if bg_raw_color is not None:
+            rgb_raw = h * combine_param + bg_raw_color * (1-combine_param)
+            # rgb_raw = h + bg_raw_color
+        else:
+            rgb_raw = h
+            # h: [N, 3]
+            # h = h*
+            
         #     h = h + bg_raw_color
             # h = bg_raw_color
-        
-        color = torch.sigmoid(h)
+        # rgb_raw = h
+        color = torch.sigmoid(rgb_raw)
 
         result = (sigma, color)
         if return_features:

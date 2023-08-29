@@ -21,6 +21,6 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/oats --workspace oats_normal -O --bound 2 --scale 0.33 --iters $ITERATIONS --type wrap  \
+python3 main_nerf.py data/oats --workspace oats_normal -O --bound 8 --scale 0.33 --iters $ITERATIONS --type wrap  \
 --ckpt scratch \
 --wandb --wandb_name oats_normal --wandb_project oats 

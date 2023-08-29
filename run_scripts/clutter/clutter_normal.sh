@@ -21,4 +21,9 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/clutter --workspace clutter_normal -O --bound 1 --scale 2.0 --iters $ITERATIONS --type wrap  --ckpt scratch --wandb --wandb_name clutter_normal_large_density_grid_low_density_thresh --wandb_project clutter --density_thresh 0.01 
+python3 main_nerf.py data/clutter --workspace clutter_normal -O --bound 1 --scale 0.8 --dt_gamma 0  --iters $ITERATIONS --type wrap --bg_radius 5  --gui --test
+# \
+# --ckpt scratch --wandb --wandb_name clutter_normal_bg_radius_5 --wandb_project clutter 
+# --gui
+# 
+# 

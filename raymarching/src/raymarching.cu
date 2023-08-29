@@ -556,7 +556,7 @@ __global__ void kernel_composite_rays_train_forward(
             t += deltas[1]; // real delta
             d += weight * t;
             
-            if (d_dex == 0.0f && sigmas[0] > D_thresh) {
+            if (d_dex == 0.0f && bg_sigmas[0] > D_thresh) {
                 d_dex = t;
             }
 
@@ -914,7 +914,7 @@ __global__ void kernel_composite_rays(
             t += deltas[1]; // real delta
             d += weight * t;
             
-            if (d_dex == 0.0f && sigmas[0] > D_thresh) {
+            if (d_dex == 0.0f && bg_sigmas[0] > D_thresh) {
                 d_dex = t;
             }
 
