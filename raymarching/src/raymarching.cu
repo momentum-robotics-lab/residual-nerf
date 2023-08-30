@@ -848,7 +848,7 @@ __global__ void kernel_composite_rays(
     // locate 
     sigmas += n * n_step;
     raw_sigmas += n * n_step;
-    mixnet += n * n_step ;
+    mixnet += n * n_step * 2 ;
     rgbs += n * n_step * 3;
     deltas += n * n_step * 2;
     
@@ -893,15 +893,19 @@ __global__ void kernel_composite_rays(
         // g_mix += weight * (mixnet[0]) ;
         // b_mix = 0.0f;
 
+        r_mix += mixnet[0] * weight ;
+        g_mix += mixnet[1] * weight;
+        b_mix += 0.0f;
+
         
         t += deltas[1]; // real delta
         d += weight * t;
         
         if (d_dex == 0.0f && raw_sigmas[0] > D_thresh) {
             d_dex = t;
-            r_mix = 1.0f - mixnet[0];
-            g_mix = mixnet[0];
-            b_mix = 0.0f;
+            // r_mix = 1.0f - mixnet[0];
+            // g_mix = mixnet[0];
+            // b_mix = 0.0f;
         }
 
         // minimal remained transmittence

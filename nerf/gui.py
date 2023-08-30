@@ -119,7 +119,7 @@ class NeRFGUI:
         elif self.mode == 'dex_depth':
             return np.expand_dims(outputs['dex_depth'], -1).repeat(3, -1)
         elif self.mode == 'mixnet':
-            return np.expand_dims(outputs['mixnet'], -1).repeat(3, -1)
+            return outputs['mixnet']
 
     
     def test_step(self):

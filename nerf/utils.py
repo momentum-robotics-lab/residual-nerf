@@ -905,7 +905,7 @@ class Trainer(object):
         with torch.no_grad():
             with torch.cuda.amp.autocast(enabled=self.fp16):
                 # here spp is used as perturb random seed! (but not perturb the first sample)
-                preds, preds_depth, preds_dex_depth, mixnet = self.test_step(data, bg_color=bg_color, perturb=False if spp == 1 else spp,return_dex=True,return_mixnet=True,D_thresh=D_thresh)
+                preds, preds_depth, preds_dex_depth, mixnets = self.test_step(data, bg_color=bg_color, perturb=False if spp == 1 else spp,return_dex=True,return_mixnet=True,D_thresh=D_thresh)
 
         if self.ema is not None:
             self.ema.restore()
@@ -916,13 +916,14 @@ class Trainer(object):
             preds = F.interpolate(preds.permute(0, 3, 1, 2), size=(H, W), mode='nearest').permute(0, 2, 3, 1).contiguous()
             preds_depth = F.interpolate(preds_depth.unsqueeze(1), size=(H, W), mode='nearest').squeeze(1)
             preds_dex_depth = F.interpolate(preds_dex_depth.unsqueeze(1), size=(H, W), mode='nearest').squeeze(1)
-            mixnet = F.interpolate(mixnet.permute(0, 3, 1, 2), size=(H, W), mode='nearest').permute(0, 2, 3, 1).contiguous()
+            mixnets = F.interpolate(mixnets.permute(0, 3, 1, 2), size=(H, W), mode='nearest').permute(0, 2, 3, 1).contiguous()
 
         if self.opt.color_space == 'linear':
             preds = linear_to_srgb(preds)
+            mixnets = linear_to_srgb(mixnets)
 
         pred = preds[0].detach().cpu().numpy()
-        mixnet = mixnet[0].detach().cpu().numpy()
+        mixnet = mixnets[0].detach().cpu().numpy()
         pred_depth = preds_depth[0].detach().cpu().numpy()
         pred_dex_depth = preds_dex_depth[0].detach().cpu().numpy()
 

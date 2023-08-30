@@ -73,6 +73,7 @@ if __name__ == '__main__':
     parser.add_argument('--combined_ckpt',type=str,default='combined_model.pth',help='where the combine model will be saved')
     parser.add_argument('--combined_rounds',type=int,default=10,help='how many rounds to train the combined model only')
     parser.add_argument('--d_thresh',default=5.0,type=float)
+    parser.add_argument('--num_layers',default=2,type=int)
     opt = parser.parse_args()
 
     if opt.wandb:
@@ -151,7 +152,7 @@ if __name__ == '__main__':
     if opt.test:
         
         metrics = [PSNRMeter(), LPIPSMeter(device=device)]
-        trainer = Trainer('ngp_'+opt.type, opt, model, device=device, workspace=opt.workspace, criterion=criterion, fp16=opt.fp16, metrics=metrics, use_checkpoint=opt.ckpt,bg_model=bg_model,combined_rounds=opt.combined_rounds)
+        trainer = Trainer('ngp_'+opt.type, opt, model, device=device, workspace=opt.workspace, criterion=criterion, fp16=opt.fp16, metrics=metrics, use_checkpoint=opt.ckpt,bg_model=bg_model,combined_rounds=opt.combined_rounds, bg_cktp = opt.bg_ckpt)
 
         if opt.gui:
             gui = NeRFGUI(opt, trainer)
