@@ -132,9 +132,9 @@ class NeRFNetwork(NeRFRenderer):
             if l != self.num_layers - 1:
                 h = F.relu(h, inplace=True)
         
-        h_sigmoided = trunc_exp(h)
-        combine_param_res = h_sigmoided[..., 0]
-        combine_param_bg = (1.0-h_sigmoided[..., 0])
+        h_sigmoided = trunc_exp(h[..., 0])
+        combine_param_res = h_sigmoided
+        combine_param_bg = (1.0-h_sigmoided)
         
 
         h = x
@@ -157,7 +157,6 @@ class NeRFNetwork(NeRFRenderer):
         # raw_sigma_combined = h[...,0]
         sigma = trunc_exp(raw_sigma_combined)
         
-
         # if bg_sigma is not None:
         #     sigma = sigma + bg_sigma
             

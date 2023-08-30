@@ -848,7 +848,7 @@ __global__ void kernel_composite_rays(
     // locate 
     sigmas += n * n_step;
     raw_sigmas += n * n_step;
-    mixnet += n * n_step * 2 ;
+    mixnet += n * n_step ;
     rgbs += n * n_step * 3;
     deltas += n * n_step * 2;
     
@@ -893,8 +893,8 @@ __global__ void kernel_composite_rays(
         // g_mix += weight * (mixnet[0]) ;
         // b_mix = 0.0f;
 
-        r_mix += mixnet[0] * weight ;
-        g_mix += mixnet[1] * weight;
+        r_mix += (1.0f-mixnet[0]) * weight ;
+        g_mix += mixnet[0] * weight;
         b_mix += 0.0f;
 
         
