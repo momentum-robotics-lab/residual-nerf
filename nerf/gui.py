@@ -118,6 +118,8 @@ class NeRFGUI:
             return np.expand_dims(outputs['depth'], -1).repeat(3, -1)
         elif self.mode == 'dex_depth':
             return np.expand_dims(outputs['dex_depth'], -1).repeat(3, -1)
+        elif self.mode == 'mixnet':
+            return np.expand_dims(outputs['mixnet'], -1).repeat(3, -1)
 
     
     def test_step(self):
@@ -285,7 +287,7 @@ class NeRFGUI:
                     self.mode = app_data
                     self.need_update = True
                 
-                dpg.add_combo(('image', 'depth','dex_depth'), label='mode', default_value=self.mode, callback=callback_change_mode)
+                dpg.add_combo(('image', 'depth','dex_depth','mixnet'), label='mode', default_value=self.mode, callback=callback_change_mode)
 
                 # bg_color picker
                 def callback_change_bg(sender, app_data):

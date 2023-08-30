@@ -648,7 +648,7 @@ class Trainer(object):
         return pred_rgb, pred_depth, gt_rgb, loss
 
     # moved out bg_color and perturb for more flexible control...
-    def test_step(self, data, bg_color=None, perturb=False,return_dex = False,D_thresh = None):  
+    def test_step(self, data, bg_color=None, perturb=False,return_dex = False,D_thresh = None,return_mixnet=False):  
 
         rays_o = data['rays_o'] # [B, N, 3]
         rays_d = data['rays_d'] # [B, N, 3]
@@ -667,6 +667,10 @@ class Trainer(object):
         if return_dex:
             pred_dex_depth = outputs['dex_depth'].reshape(-1, H, W)
             result += (pred_dex_depth,)
+        
+        if return_mixnet:
+            result += (outputs['mixnet'].reshape(-1, H, W, 3),)
+
 
         return result
 
@@ -901,7 +905,7 @@ class Trainer(object):
         with torch.no_grad():
             with torch.cuda.amp.autocast(enabled=self.fp16):
                 # here spp is used as perturb random seed! (but not perturb the first sample)
-                preds, preds_depth, preds_dex_depth = self.test_step(data, bg_color=bg_color, perturb=False if spp == 1 else spp,return_dex=True,D_thresh=D_thresh)
+                preds, preds_depth, preds_dex_depth, mixnet = self.test_step(data, bg_color=bg_color, perturb=False if spp == 1 else spp,return_dex=True,return_mixnet=True,D_thresh=D_thresh)
 
         if self.ema is not None:
             self.ema.restore()
@@ -912,11 +916,13 @@ class Trainer(object):
             preds = F.interpolate(preds.permute(0, 3, 1, 2), size=(H, W), mode='nearest').permute(0, 2, 3, 1).contiguous()
             preds_depth = F.interpolate(preds_depth.unsqueeze(1), size=(H, W), mode='nearest').squeeze(1)
             preds_dex_depth = F.interpolate(preds_dex_depth.unsqueeze(1), size=(H, W), mode='nearest').squeeze(1)
+            mixnet = F.interpolate(mixnet.permute(0, 3, 1, 2), size=(H, W), mode='nearest').permute(0, 2, 3, 1).contiguous()
 
         if self.opt.color_space == 'linear':
             preds = linear_to_srgb(preds)
 
         pred = preds[0].detach().cpu().numpy()
+        mixnet = mixnet[0].detach().cpu().numpy()
         pred_depth = preds_depth[0].detach().cpu().numpy()
         pred_dex_depth = preds_dex_depth[0].detach().cpu().numpy()
 
@@ -924,6 +930,7 @@ class Trainer(object):
             'image': pred,
             'depth': pred_depth,
             'dex_depth': pred_dex_depth,
+            'mixnet': mixnet,
         }
 
         return outputs

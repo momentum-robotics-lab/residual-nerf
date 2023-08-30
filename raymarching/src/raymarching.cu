@@ -502,7 +502,7 @@ __global__ void kernel_composite_rays_train_forward(
     const scalar_t * __restrict__ sigmas,
     const scalar_t * __restrict__ bg_sigmas,
     const scalar_t * __restrict__ rgbs,  
-    const scalar_t * __restrict__ bg_rgbs,
+    const scalar_t * __restrict__ mixnet,
     const scalar_t * __restrict__ deltas,
     const int * __restrict__ rays,
     const uint32_t M, const uint32_t N, const float T_thresh, const float D_thresh,
@@ -533,7 +533,7 @@ __global__ void kernel_composite_rays_train_forward(
     sigmas += offset;
     bg_sigmas += offset;
     rgbs += offset * 3;
-    bg_rgbs += offset * 3;
+    mixnet += offset * 3;
     deltas += offset * 2;
 
     // accumulate 
@@ -544,61 +544,35 @@ __global__ void kernel_composite_rays_train_forward(
     bool reached_bg = false;
     while (step < num_steps) {
 
-
-        if (true)
-        {   
-            const scalar_t alpha = 1.0f - __expf(- sigmas[0] * deltas[0]);
-            const scalar_t weight = alpha * T;
-            r += weight * rgbs[0];
-            g += weight * rgbs[1];
-            b += weight * rgbs[2];
-            
-            t += deltas[1]; // real delta
-            d += weight * t;
-            
-            if (d_dex == 0.0f && bg_sigmas[0] > D_thresh) {
-                d_dex = t;
-            }
-
-            ws += weight;
-            
-            T *= 1.0f - alpha;
-
-            // minimal remained transmittence
-            if (T < T_thresh) break;
-            
+        const scalar_t alpha = 1.0f - __expf(- sigmas[0] * deltas[0]);
+        const scalar_t weight = alpha * T;
+        r += weight * rgbs[0];
+        g += weight * rgbs[1];
+        b += weight * rgbs[2];
+        
+        t += deltas[1]; // real delta
+        d += weight * t;
+        
+        if (d_dex == 0.0f && bg_sigmas[0] > D_thresh) {
+            d_dex = t;
         }
-        else
-        {
-            reached_bg = true;
-            const scalar_t alpha = 1.0f - __expf(- bg_sigmas[0] * deltas[0]);
-            const scalar_t weight = alpha * T;
-            r += weight * bg_rgbs[0];
-            g += weight * bg_rgbs[1];
-            b += weight * bg_rgbs[2];
 
-            t += deltas[1]; // real delta
-            d += weight * t;
+        ws += weight;
+        
+        T *= 1.0f - alpha;
+
+        // minimal remained transmittence
+        if (T < T_thresh) break;
             
-            if (d_dex == 0.0f && bg_sigmas[0] > D_thresh) {
-                d_dex = t;
-            }
 
-            ws += weight;
-            
-            T *= 1.0f - alpha;
 
-            // minimal remained transmittence
-            if (T < T_thresh) break;
-        }
         bg_sigmas++;
         sigmas++;
         rgbs += 3;
-        bg_rgbs += 3;
+        mixnet += 3;
         deltas += 2;
 
         step++;
-
     }
 
     //printf("[n=%d] rgb=(%f, %f, %f), d=%f\n", n, r, g, b, d);
@@ -861,10 +835,10 @@ __global__ void kernel_composite_rays(
     scalar_t* rays_t, 
     const scalar_t* __restrict__ sigmas, 
     const scalar_t* __restrict__ rgbs, 
-    const scalar_t* __restrict__ bg_sigmas, 
-    const scalar_t* __restrict__ bg_rgbs, 
+    const scalar_t* __restrict__ raw_sigmas, 
+    const scalar_t* __restrict__ mixnet, 
     const scalar_t* __restrict__ deltas, 
-    scalar_t* weights_sum, scalar_t* depth, scalar_t* dex_depth, scalar_t* image
+    scalar_t* weights_sum, scalar_t* depth, scalar_t* dex_depth, scalar_t* image, scalar_t* mixnet_image
 ) {
     const uint32_t n = threadIdx.x + blockIdx.x * blockDim.x;
     if (n >= n_alive) return;
@@ -873,9 +847,9 @@ __global__ void kernel_composite_rays(
     
     // locate 
     sigmas += n * n_step;
-    bg_sigmas += n * n_step;
+    raw_sigmas += n * n_step;
+    mixnet += n * n_step ;
     rgbs += n * n_step * 3;
-    bg_rgbs += n * n_step * 3;
     deltas += n * n_step * 2;
     
     rays_t += index;
@@ -883,6 +857,7 @@ __global__ void kernel_composite_rays(
     depth += index;
     dex_depth += index;
     image += index * 3;
+    mixnet_image += index * 3;
 
     scalar_t t = rays_t[0]; // current ray's t
     
@@ -893,63 +868,52 @@ __global__ void kernel_composite_rays(
     scalar_t g = image[1];
     scalar_t b = image[2];
 
+    scalar_t r_mix = mixnet_image[0];
+    scalar_t g_mix = mixnet_image[1];
+    scalar_t b_mix = mixnet_image[2];
+
     // accumulate 
     uint32_t step = 0;
     bool reached_bg = false;
     while (step < n_step) {
         
-
         // ray is terminated if delta == 0
         if (deltas[0] == 0) break;
         const scalar_t T = 1 - weight_sum;
-        if (true)
-        {   
-            const scalar_t alpha = 1.0f - __expf(- sigmas[0] * deltas[0]);
-            const scalar_t weight = alpha * T;
-            weight_sum += weight;
-            r += weight * rgbs[0];
-            g += weight * rgbs[1];
-            b += weight * rgbs[2];
-            
-            t += deltas[1]; // real delta
-            d += weight * t;
-            
-            if (d_dex == 0.0f && bg_sigmas[0] > D_thresh) {
-                d_dex = t;
-            }
+  
+        const scalar_t alpha = 1.0f - __expf(- sigmas[0] * deltas[0]);
+        const scalar_t weight = alpha * T;
+        weight_sum += weight;
+        r += weight * rgbs[0];
+        g += weight * rgbs[1];
+        b += weight * rgbs[2];
 
-            
-            // minimal remained transmittence
-            if (T < T_thresh) break;
-            
-        }
-        else
-        {
-            reached_bg = true;
-            const scalar_t alpha = 1.0f - __expf(- bg_sigmas[0] * deltas[0]);
-            const scalar_t weight = alpha * T;
-            weight_sum += weight;
-            r += weight * bg_rgbs[0];
-            g += weight * bg_rgbs[1];
-            b += weight * bg_rgbs[2];
+        // // mixnet colors 
+        // r_mix += weight * (1.0f - mixnet[0]) ;
+        // g_mix += weight * (mixnet[0]) ;
+        // b_mix = 0.0f;
 
-            t += deltas[1]; // real delta
-            d += weight * t;
-            
-            if (d_dex == 0.0f && bg_sigmas[0] > D_thresh) {
-                d_dex = t;
-            }
-
-            // minimal remained transmittence
-            if (T < T_thresh) break;
+        
+        t += deltas[1]; // real delta
+        d += weight * t;
+        
+        if (d_dex == 0.0f && raw_sigmas[0] > D_thresh) {
+            d_dex = t;
+            r_mix = 1.0f - mixnet[0];
+            g_mix = mixnet[0];
+            b_mix = 0.0f;
         }
 
-        bg_sigmas++;
+        // minimal remained transmittence
+        if (T < T_thresh) break;
+            
+
+        raw_sigmas++;
         sigmas++;
         rgbs += 3;
-        bg_rgbs += 3;
         deltas += 2;
         step++;
+        mixnet++;
 
     }
 
@@ -968,13 +932,17 @@ __global__ void kernel_composite_rays(
     image[0] = r;
     image[1] = g;
     image[2] = b;
+
+    mixnet_image[0] = r_mix;
+    mixnet_image[1] = g_mix;
+    mixnet_image[2] = b_mix;
 }
 
 
-void composite_rays(const uint32_t n_alive, const uint32_t n_step, const float T_thresh,const float D_thresh, at::Tensor rays_alive, at::Tensor rays_t, at::Tensor sigmas, at::Tensor rgbs, at::Tensor bg_sigmas, at::Tensor bg_rgbs, at::Tensor deltas, at::Tensor weights, at::Tensor depth, at::Tensor dex_depth, at::Tensor image) {
+void composite_rays(const uint32_t n_alive, const uint32_t n_step, const float T_thresh,const float D_thresh, at::Tensor rays_alive, at::Tensor rays_t, at::Tensor sigmas, at::Tensor rgbs, at::Tensor raw_sigmas, at::Tensor mixnet, at::Tensor deltas, at::Tensor weights, at::Tensor depth, at::Tensor dex_depth, at::Tensor image, at::Tensor mixnet_image) {
     static constexpr uint32_t N_THREAD = 128;
     AT_DISPATCH_FLOATING_TYPES_AND_HALF(
     image.scalar_type(), "composite_rays", ([&] {
-        kernel_composite_rays<<<div_round_up(n_alive, N_THREAD), N_THREAD>>>(n_alive, n_step, T_thresh, D_thresh, rays_alive.data_ptr<int>(), rays_t.data_ptr<scalar_t>(), sigmas.data_ptr<scalar_t>(), rgbs.data_ptr<scalar_t>(), bg_sigmas.data_ptr<scalar_t>(), bg_rgbs.data_ptr<scalar_t>(), deltas.data_ptr<scalar_t>(), weights.data_ptr<scalar_t>(), depth.data_ptr<scalar_t>(), dex_depth.data_ptr<scalar_t>(), image.data_ptr<scalar_t>());
+        kernel_composite_rays<<<div_round_up(n_alive, N_THREAD), N_THREAD>>>(n_alive, n_step, T_thresh, D_thresh, rays_alive.data_ptr<int>(), rays_t.data_ptr<scalar_t>(), sigmas.data_ptr<scalar_t>(), rgbs.data_ptr<scalar_t>(), raw_sigmas.data_ptr<scalar_t>(), mixnet.data_ptr<scalar_t>(), deltas.data_ptr<scalar_t>(), weights.data_ptr<scalar_t>(), depth.data_ptr<scalar_t>(), dex_depth.data_ptr<scalar_t>(), image.data_ptr<scalar_t>(), mixnet_image.data_ptr<scalar_t>());
     }));
 }

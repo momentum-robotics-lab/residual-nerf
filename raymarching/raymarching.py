@@ -365,7 +365,7 @@ march_rays = _march_rays.apply
 class _composite_rays(Function):
     @staticmethod
     @custom_fwd(cast_inputs=torch.float32) # need to cast sigmas & rgbs to float
-    def forward(ctx, n_alive, n_step, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth, dex_depth, image, T_thresh=1e-2, D_thresh=-10,bg_sigmas=None,bg_rgbs=None):
+    def forward(ctx, n_alive, n_step, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth, dex_depth, image,mixnet_image, T_thresh=1e-2, D_thresh=-10,bg_sigmas=None,bg_rgbs=None,mixnet=None):
         ''' composite rays' rgbs, according to the ray marching formula. (for inference)
         Args:
             n_alive: int, number of alive rays
@@ -386,10 +386,13 @@ class _composite_rays(Function):
         if bg_sigmas is None:
             bg_sigmas = torch.zeros_like(sigmas)
         
+        if mixnet is None:
+            mixnet = torch.zeros_like(sigmas)
+        
         if bg_rgbs is None:
             bg_rgbs = torch.zeros_like(rgbs)
             
-        _backend.composite_rays(n_alive, n_step, T_thresh, D_thresh, rays_alive, rays_t, sigmas, rgbs,bg_sigmas, bg_rgbs, deltas, weights_sum, depth, dex_depth, image)
+        _backend.composite_rays(n_alive, n_step, T_thresh, D_thresh, rays_alive, rays_t, sigmas, rgbs,bg_sigmas, mixnet, deltas, weights_sum, depth, dex_depth, image, mixnet_image)
         return tuple()
 
 

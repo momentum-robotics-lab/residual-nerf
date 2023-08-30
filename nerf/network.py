@@ -108,7 +108,7 @@ class NeRFNetwork(NeRFRenderer):
             self.bg_net = None
 
 
-    def forward(self, x, d,bg_model=None,return_features=False,return_bg_raw=False):
+    def forward(self, x, d,bg_model=None,return_features=False,return_bg_raw=False, return_mixnet=False):
         # x: [N, 3], in [-bound, bound]
         # d: [N, 3], nomalized in [-1, 1]
         # sigma
@@ -130,7 +130,7 @@ class NeRFNetwork(NeRFRenderer):
             if l != self.num_layers - 1:
                 h = F.relu(h, inplace=True)
         
-        combine_param = trunc_exp(h[..., 0]) # [0-1]
+        combine_param = torch.sigmoid(h[..., 0]) # [0-1]
         
 
         h = x
@@ -190,6 +190,9 @@ class NeRFNetwork(NeRFRenderer):
         
         if return_bg_raw:
             result += (bg_sigma,bg_color)
+        
+        if return_mixnet:
+            result += (combine_param,)
 
                 
         

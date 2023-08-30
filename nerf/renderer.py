@@ -276,7 +276,7 @@ class NeRFRenderer(nn.Module):
             bg_color = 1
 
         results = {}
-
+        mixnet_image = None
         if self.training:
             # setup counter
             counter = self.step_counter[self.local_step % 16]
@@ -286,7 +286,7 @@ class NeRFRenderer(nn.Module):
             xyzs, dirs, deltas, rays = raymarching.march_rays_train(rays_o, rays_d, self.bound, self.density_bitfield, self.cascade, self.grid_size, nears, fars, counter, self.mean_count, perturb, 128, force_all_rays, dt_gamma, max_steps)
 
             #plot_pointcloud(xyzs.reshape(-1, 3).detach().cpu().numpy())
-            sigmas, rgbs, sigmas_raw, rgbs_raw, bg_sigmas, bg_rgbs = self(xyzs, dirs,bg_model=bg_model,return_features=True,return_bg_raw=True)
+            sigmas, rgbs, sigmas_raw, rgbs_raw, bg_sigmas, bg_rgbs, mixnet = self(xyzs, dirs,bg_model=bg_model,return_features=True,return_bg_raw=True,return_mixnet=True)
             # density_outputs = self.density(xyzs) # [M,], use a dict since it may include extra things, like geo_feat for rgb.
             # sigmas = density_outputs['sigma']
             # rgbs = self.color(xyzs, dirs, **density_outputs)
@@ -348,6 +348,7 @@ class NeRFRenderer(nn.Module):
             dex_depth = torch.ones(N, dtype=dtype, device=device) * dex_init # [N], init as a large number to avoid early termination.
 
             image = torch.zeros(N, 3, dtype=dtype, device=device)
+            mixnet_image = torch.zeros(N, 3, dtype=dtype, device=device)
             
             n_alive = N
             rays_alive = torch.arange(n_alive, dtype=torch.int32, device=device) # [N]
@@ -368,7 +369,7 @@ class NeRFRenderer(nn.Module):
                 n_step = max(min(N // n_alive, 8), 1)
 
                 xyzs, dirs, deltas = raymarching.march_rays(n_alive, n_step, rays_alive, rays_t, rays_o, rays_d, self.bound, self.density_bitfield, self.cascade, self.grid_size, nears, fars, 128, perturb if step == 0 else False, dt_gamma, max_steps)
-                sigmas, rgbs, sigmas_raw, rgbs_raw, bg_sigmas, bg_rgbs = self(xyzs, dirs,bg_model=bg_model,return_features=True,return_bg_raw=True)
+                sigmas, rgbs, sigmas_raw, rgbs_raw, bg_sigmas, bg_rgbs,mixnet = self(xyzs, dirs,bg_model=bg_model,return_features=True,return_bg_raw=True,return_mixnet=True)
                 # density_outputs = self.density(xyzs) # [M,], use a dict since it may include extra things, like geo_feat for rgb.
                 # sigmas = density_outputs['sigma']
                 # rgbs = self.color(xyzs, dirs, **density_outputs)
@@ -379,7 +380,7 @@ class NeRFRenderer(nn.Module):
                 if bg_rgbs is None:
                     bg_rgbs = torch.zeros_like(rgbs)
                 bg_sigmas = self.density_scale * bg_sigmas
-                raymarching.composite_rays(n_alive, n_step, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth,dex_depth, image, T_thresh,D_thresh,sigmas_raw)
+                raymarching.composite_rays(n_alive, n_step, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth,dex_depth, image,mixnet_image, T_thresh,D_thresh,sigmas_raw,None,mixnet)
                 
                 dex_depth[dex_depth==dex_init] = 0.0
 
@@ -394,10 +395,15 @@ class NeRFRenderer(nn.Module):
             dex_depth = torch.clamp(dex_depth - nears, min=0) / (fars - nears)
 
             image = image.view(*prefix, 3)
+            mixnet_image = mixnet_image.view(*prefix, 3)
+
             depth = depth.view(*prefix)
         
         results['depth'] = depth
         results['image'] = image
+        if mixnet_image is not None:
+            results['mixnet'] = mixnet_image
+
         results['dex_depth'] = dex_depth
         results['rgbs'] = rgbs
         results['sigmas'] = sigmas
