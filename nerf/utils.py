@@ -525,6 +525,7 @@ class Trainer(object):
             #torch_vis_2d(pred_rgb[0])
 
             loss = self.clip_loss(pred_rgb)
+            loss += outputs['mixnet_coeff'].mean() * self.opt.mixnet_reg # encourage mixnet to be sparse
             
             return pred_rgb, None, loss
 
@@ -669,7 +670,7 @@ class Trainer(object):
             result += (pred_dex_depth,)
         
         if return_mixnet:
-            result += (outputs['mixnet'].reshape(-1, H, W, 3),)
+            result += (outputs['mixnet_img'].reshape(-1, H, W, 3),)
 
 
         return result
@@ -931,7 +932,7 @@ class Trainer(object):
             'image': pred,
             'depth': pred_depth,
             'dex_depth': pred_dex_depth,
-            'mixnet': mixnet,
+            'mixnet_img': mixnet,
         }
 
         return outputs

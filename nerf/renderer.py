@@ -403,7 +403,10 @@ class NeRFRenderer(nn.Module):
         results['depth'] = depth
         results['image'] = image
         if mixnet_image is not None:
-            results['mixnet'] = mixnet_image
+            results['mixnet_img'] = mixnet_image
+
+        if mixnet is not None:
+            results['mixnet_coeff'] = mixnet
 
         results['dex_depth'] = dex_depth
         results['rgbs'] = rgbs

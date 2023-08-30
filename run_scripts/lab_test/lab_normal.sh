@@ -21,6 +21,6 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/lab_test --workspace lab_normal -O --bound 16 --scale 1.0 --iters $ITERATIONS --type wrap --gui --test --d_thresh 5.0 --ckpt scratch
-# --ckpt scratch --wandb --wandb_name lab_normal_bound_16 --wandb_project lab_test
+python3 main_nerf.py data/lab_test --workspace lab_normal -O --bound 16 --scale 0.8 --iters $ITERATIONS --type wrap --ckpt scratch \
+--ckpt scratch --wandb --wandb_name lab_normal --wandb_project lab
 # 
