@@ -134,7 +134,7 @@ class NeRFNetwork(NeRFRenderer):
         
         h_sigmoided = trunc_exp(h)
         combine_param_res = h_sigmoided[..., 0]
-        combine_param_bg = h_sigmoided[..., 1]
+        combine_param_bg = (1.0-h_sigmoided[..., 0])
         
 
         h = x
