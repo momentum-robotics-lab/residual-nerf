@@ -22,6 +22,7 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/lego --workspace lego_res -O --bound 1 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type wrap  --bg_ckpt $BG_CHECKPOINT --mixnet_reg 0.001 \
---wandb --wandb_name lego_res_mixnetreg_1e-3 --wandb_project lego 
+python3 main_nerf.py data/lego --workspace lego_res -O --bound 1 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type wrap  --bg_ckpt $BG_CHECKPOINT  --ckpt scratch
+# --wandb --wandb_name lego_res_mixnetreg_1e-3 --wandb_project lego 
+# --mixnet_reg 0.001
  
