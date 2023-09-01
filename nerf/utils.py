@@ -646,6 +646,12 @@ class Trainer(object):
 
         loss = self.criterion(pred_rgb, gt_rgb).mean()
 
+        if self.use_wandb:
+            psrn_tool = PSNRMeter()
+            psrn_tool.update(pred_rgb,gt_rgb)
+            psrn = psrn_tool.measure()
+            wandb.log({"val/psnr": psrn})
+
         return pred_rgb, pred_depth, gt_rgb, loss
 
     # moved out bg_color and perturb for more flexible control...

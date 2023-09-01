@@ -254,7 +254,7 @@ class NeRFRenderer(nn.Module):
         }
 
 
-    def run_cuda(self, rays_o, rays_d, dt_gamma=0, bg_color=None, perturb=False, force_all_rays=False, max_steps=1024, T_thresh=1e-4,D_thresh=10.0, bg_model=None,**kwargs):
+    def run_cuda(self, rays_o, rays_d, dt_gamma=0, bg_color=None, perturb=False, force_all_rays=False, max_steps=1024, T_thresh=1e-4,D_thresh=10.0, bg_model=None,nears_force=None,fars_force=None,**kwargs):
         # rays_o, rays_d: [B, N, 3], assumes B == 1
         # return: image: [B, N, 3], depth: [B, N]
         prefix = rays_o.shape[:-1]
@@ -322,6 +322,7 @@ class NeRFRenderer(nn.Module):
                 image = torch.stack(images, axis=0) # [K, B, N, 3]
 
             else:
+                
                 weights_sum, depth, image, dex_depth = raymarching.composite_rays_train(sigmas, rgbs, deltas, rays, T_thresh,D_thresh,True,sigmas_raw,bg_rgbs)
                 image = image + (1 - weights_sum).unsqueeze(-1) * bg_color
                 depth = torch.clamp(depth - nears, min=0) / (fars - nears)
@@ -389,8 +390,14 @@ class NeRFRenderer(nn.Module):
 
                 step += n_step
 
+
             image = image + (1 - weights_sum).unsqueeze(-1) * bg_color
             mixnet_image = mixnet_image + (1 - weights_sum).unsqueeze(-1) * bg_color
+
+            if fars_force is not None:
+                fars = fars_force
+            if nears_force is not None:
+                nears = nears_force
 
             depth = torch.clamp(depth - nears, min=0) / (fars - nears)
             dex_depth = torch.clamp(dex_depth - nears, min=0) / (fars - nears)

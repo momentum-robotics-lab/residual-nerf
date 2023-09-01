@@ -10,7 +10,6 @@ else
     export CUDA_VISIBLE_DEVICES=$1
 fi
 
-export BG_CHECKPOINT='lego_bg/checkpoints/ngp_bg_ep0100.pth'
 export ITERATIONS=10000
 # second argument is number of iterations 
 if [ $# -lt 2 ]
@@ -22,7 +21,5 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/lego --workspace lego_res -O --bound 1 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type wrap  --bg_ckpt $BG_CHECKPOINT  --ckpt scratch \
---wandb --wandb_name lego_res_manual_mix --wandb_project lego 
-# --mixnet_reg 0.001
- 
+python3 main_nerf.py data/wine --workspace wine_bg -O --bound 4 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type bg  \
+--ckpt scratch --wandb --wandb_name wine_bg --wandb_project wine 
