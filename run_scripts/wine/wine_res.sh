@@ -22,7 +22,7 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/wine --workspace wine_res -O --bound 4 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type wrap --bg_ckpt $BG_CHECKPOINT --mixnet_reg 10.0 \
---ckpt scratch --wandb --wandb_name wine_res_switch_bg --wandb_project wine 
+python3 main_nerf.py data/wine --workspace wine_res_bg_sigma -O --bound 4 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type wrap --bg_ckpt $BG_CHECKPOINT --mixnet_reg 10.0 \
+--ckpt scratch --wandb --wandb_name wine_res_learn_bgsigma --wandb_project wine 
 
  

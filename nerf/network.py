@@ -50,7 +50,7 @@ class NeRFNetwork(NeRFRenderer):
         combine_net = []
         for l in range(num_layers):
             if l == 0:
-                in_dim = self.in_dim
+                in_dim = self.in_dim + 1
             else:
                 in_dim = hidden_dim
             
@@ -119,25 +119,11 @@ class NeRFNetwork(NeRFRenderer):
         bg_raw_color = None
         bg_sigma = None 
         bg_color = None
+        
         if bg_model is not None:
             bg_sigma, bg_color, bg_raw_sigma, bg_raw_color = bg_model(x,d,return_features=True)
 
-
         x = self.encoder(x, bound=self.bound)
-
-        # run combine network 
-        # h = x 
-        # for l in range(self.num_layers):
-        #     h = self.combine_net[l](h)
-        #     if l != self.num_layers - 1:
-        #         h = F.relu(h, inplace=True)
-        
-        # h_sigmoided = trunc_exp(h[..., 0])
-        # combine_param_res = h_sigmoided
-        # combine_param_bg = (1.0-h_sigmoided)
-        
-
-        
 
         h = x
         for l in range(self.num_layers):
@@ -146,14 +132,30 @@ class NeRFNetwork(NeRFRenderer):
                 h = F.relu(h, inplace=True)
 
         raw_sigma = h[..., 0].clone()
-        bg_thresh = 0.0 
+
+        combine_param_res = torch.ones_like(h[...,0])
+        # run combine network 
+        
+        if bg_raw_sigma is not None:
+            bg_raw_sigma_expanded = bg_raw_sigma.unsqueeze(-1)
+            h = torch.cat([x, bg_raw_sigma_expanded], dim=-1)
+            for l in range(self.num_layers):
+                h = self.combine_net[l](h)
+                if l != self.num_layers - 1:
+                    h = F.relu(h, inplace=True)
+        
+            h_sigmoided = trunc_exp(h[..., 0])
+            combine_param_res = h_sigmoided
+            combine_param_bg = (1.0-h_sigmoided)
+        
+        bg_thresh = 2.5
 
         
         if bg_raw_sigma is not None:
-            sigma_mask = bg_raw_sigma > bg_thresh
-            combine_param_res = torch.ones_like(h[...,0])
-            combine_param_res[sigma_mask] = 0.0
-            combine_param_bg = (1.0-combine_param_res)
+            
+            # sigma_mask = bg_raw_sigma > bg_thresh
+            # combine_param_res[sigma_mask] = 0.0
+            # combine_param_bg = (1.0-combine_param_res)
 
             # use combine_param to weigh between bg and fg
             raw_sigma_combined = h[...,0] * combine_param_res + bg_raw_sigma * combine_param_bg
@@ -199,7 +201,7 @@ class NeRFNetwork(NeRFRenderer):
             # h: [N, 3]
             # h = h*
             
-        #     h = h + bg_raw_color
+            # h = h + bg_raw_color
             # h = bg_raw_color
         # rgb_raw = h
         color = torch.sigmoid(rgb_raw)
