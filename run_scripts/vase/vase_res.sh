@@ -10,6 +10,7 @@ else
     export CUDA_VISIBLE_DEVICES=$1
 fi
 
+export BG_CHECKPOINT='vase_bg/checkpoints/ngp_bg_ep0100.pth'
 export ITERATIONS=10000
 # second argument is number of iterations 
 if [ $# -lt 2 ]
@@ -21,6 +22,7 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/lab_exposure --workspace lab_exposure_normal -O  --iters $ITERATIONS --type wrap --d_thresh 2.5 --ckpt scratch  \
---ckpt scratch --wandb --wandb_name lab_normal --wandb_project lab_exposure
-# 
+python3 main_nerf.py data/vase --workspace vase_res -O --dt_gamma 0 --iters $ITERATIONS --type wrap --bg_ckpt $BG_CHECKPOINT --d_thresh 3.0 --mixnet_reg 10.0 \
+--ckpt scratch --wandb --wandb_name vase_res --wandb_project vase 
+
+ 

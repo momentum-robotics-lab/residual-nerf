@@ -82,6 +82,7 @@ class NeRFRenderer(nn.Module):
         # NOTE: aabb (can be rectangular) is only used to generate points, we still rely on bound (always cubic) to calculate density grid and hashing.
         aabb_train = torch.FloatTensor([-bound, -bound, -bound, bound, bound, bound])
         aabb_infer = aabb_train.clone()
+            
         self.register_buffer('aabb_train', aabb_train)
         self.register_buffer('aabb_infer', aabb_infer)
 

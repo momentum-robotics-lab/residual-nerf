@@ -761,20 +761,25 @@ class Trainer(object):
             all_preds = []
             all_preds_depth = []
             all_preds_dex_depth = []
+            all_mix_preds = []
 
         with torch.no_grad():
 
             for i, data in enumerate(loader):
                 
                 with torch.cuda.amp.autocast(enabled=self.fp16):
-                    preds, preds_depth, preds_dex_depth = self.test_step(data,return_dex=True,D_thresh=self.opt.d_thresh)
+                    preds, preds_depth, preds_dex_depth, mix_imgs = self.test_step(data,return_dex=True,D_thresh=self.opt.d_thresh,return_mixnet=True)
 
                 if self.opt.color_space == 'linear':
                     preds = linear_to_srgb(preds)
+                    mix_imgs = linear_to_srgb(mix_imgs)
 
                 pred = preds[0].detach().cpu().numpy()
                 pred = (pred * 255).astype(np.uint8)
 
+                mix_img = mix_imgs[0].detach().cpu().numpy()
+                mix_img = (mix_img * 255).astype(np.uint8)
+                
                 pred_depth = preds_depth[0].detach().cpu().numpy()
                 pred_depth = (pred_depth * 255).astype(np.uint8)
 
@@ -785,6 +790,7 @@ class Trainer(object):
                     all_preds.append(pred)
                     all_preds_depth.append(pred_depth)
                     all_preds_dex_depth.append(preds_dex_depth)
+                    all_mix_preds.append(mix_img)
                 else:
                     cv2.imwrite(os.path.join(save_path, f'{name}_{i:04d}_rgb.png'), cv2.cvtColor(pred, cv2.COLOR_RGB2BGR))
                     cv2.imwrite(os.path.join(save_path, f'{name}_{i:04d}_depth.png'), pred_depth)
@@ -794,11 +800,13 @@ class Trainer(object):
         
         if write_video:
             all_preds = np.stack(all_preds, axis=0)
+            all_mix_preds = np.stack(all_mix_preds, axis=0)
             all_preds_depth = np.stack(all_preds_depth, axis=0)
             all_preds_dex_depth = np.stack(all_preds_dex_depth, axis=0)
             imageio.mimwrite(os.path.join(save_path, f'{name}_rgb.mp4'), all_preds, fps=25, quality=8, macro_block_size=1)
             imageio.mimwrite(os.path.join(save_path, f'{name}_depth.mp4'), all_preds_depth, fps=25, quality=8, macro_block_size=1)
             imageio.mimwrite(os.path.join(save_path, f'{name}_dex_depth.mp4'), all_preds_dex_depth, fps=25, quality=8, macro_block_size=1)
+            imageio.mimwrite(os.path.join(save_path, f'{name}_mix.mp4'), all_mix_preds, fps=25, quality=8, macro_block_size=1)
 
         self.log(f"==> Finished Test.")
     

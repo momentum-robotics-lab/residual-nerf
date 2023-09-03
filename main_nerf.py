@@ -72,14 +72,18 @@ if __name__ == '__main__':
     parser.add_argument('--combine_net',action='store_true',help='combine net')
     parser.add_argument('--combined_ckpt',type=str,default='combined_model.pth',help='where the combine model will be saved')
     parser.add_argument('--combined_rounds',type=int,default=10,help='how many rounds to train the combined model only')
-    parser.add_argument('--d_thresh',default=5.0,type=float)
+    parser.add_argument('--d_thresh',default=2.5,type=float)
     parser.add_argument('--num_layers',default=2,type=int)
     parser.add_argument('--mixnet_reg',default=0.0,type=float)
+    parser.add_argument('--aabb_infer',default=None,type=float,nargs='*')
     opt = parser.parse_args()
+
+    
 
     if opt.wandb:
         wandb.init(project=opt.wandb_project,name=opt.wandb_name,config=opt)
-        
+    
+    
 
     if opt.O:
         opt.fp16 = True
@@ -106,7 +110,11 @@ if __name__ == '__main__':
     print(opt)
     
     seed_everything(opt.seed)
-
+    
+    is_res = False
+    if opt.bg_ckpt is not None:
+        is_res= True
+    
     model = NeRFNetwork(
         encoding="hashgrid",
         bound=opt.bound,
@@ -115,6 +123,7 @@ if __name__ == '__main__':
         min_near=opt.min_near,
         density_thresh=opt.density_thresh,
         bg_radius=opt.bg_radius,
+        is_res=is_res,
     )
 
     if opt.type == 'wrap':    
@@ -126,6 +135,7 @@ if __name__ == '__main__':
             min_near=opt.min_near,
             density_thresh=opt.density_thresh,
             bg_radius=opt.bg_radius,
+            is_res=False,
         )
     else:
         bg_model = None
@@ -155,6 +165,9 @@ if __name__ == '__main__':
         metrics = [PSNRMeter(), LPIPSMeter(device=device)]
         trainer = Trainer('ngp_'+opt.type, opt, model, device=device, workspace=opt.workspace, criterion=criterion, fp16=opt.fp16, metrics=metrics, use_checkpoint=opt.ckpt,bg_model=bg_model,combined_rounds=opt.combined_rounds, bg_cktp = opt.bg_ckpt)
 
+        if opt.aabb_infer is not None and len(opt.aabb_infer) == 6:
+            trainer.model.aabb_infer = torch.tensor(opt.aabb_infer).to(device)
+            
         if opt.gui:
             gui = NeRFGUI(opt, trainer)
             gui.render()
@@ -162,8 +175,8 @@ if __name__ == '__main__':
         else:
             test_loader = NeRFDataset(opt, device=device, split='test',type=opt.type ).dataloader()
 
-            if test_loader.has_gt:
-                trainer.evaluate(test_loader) # blender has gt, so evaluate it.
+            # if test_loader.has_gt:
+            #     trainer.evaluate(test_loader) # blender has gt, so evaluate it.
     
             trainer.test(test_loader, write_video=True) # test and save video
             
@@ -175,6 +188,9 @@ if __name__ == '__main__':
 
         train_loader = NeRFDataset(opt, device=device, split='train',type=opt.type).dataloader()
 
+                    
+        
+        
         # decay to 0.1 * init_lr at last iter step
         scheduler = lambda optimizer: optim.lr_scheduler.LambdaLR(optimizer, lambda iter: 0.1 ** min(iter / opt.iters, 1))
 
@@ -182,6 +198,8 @@ if __name__ == '__main__':
         trainer = Trainer('ngp_'+opt.type, opt, model, device=device, workspace=opt.workspace, optimizer=optimizer, criterion=criterion, ema_decay=0.95, 
                           fp16=opt.fp16, lr_scheduler=scheduler, scheduler_update_every_step=True, metrics=metrics, use_checkpoint=opt.ckpt, eval_interval=opt.eval_interval,use_wandb=opt.wandb
                           , bg_cktp = opt.bg_ckpt, bg_model=bg_model,combine_model=combine_model)
+        
+        
 
         if opt.gui:
             gui = NeRFGUI(opt, trainer, train_loader)

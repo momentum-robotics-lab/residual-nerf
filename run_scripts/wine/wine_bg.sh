@@ -21,5 +21,5 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/wine --workspace wine_bg -O --bound 4 --scale 0.8 --dt_gamma 0 --iters $ITERATIONS --type bg  \
+python3 main_nerf.py data/wine --workspace wine_bg -O --dt_gamma 0 --iters $ITERATIONS --type bg  \
 --ckpt scratch --wandb --wandb_name wine_bg --wandb_project wine 

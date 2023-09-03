@@ -22,4 +22,4 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/lab_exposure --workspace lab_exposure_res  -O   --bound 16 --scale 1.0 --iters $ITERATIONS --type wrap  --bg_ckpt $BG_CHECKPOINT --wandb --wandb_name lab_res_manual_mix --wandb_project lab_exposure --ckpt scratch
+python3 main_nerf.py data/lab_exposure --workspace lab_exposure_res -O --iters $ITERATIONS --type wrap  --bg_ckpt $BG_CHECKPOINT --wandb --wandb_name lab_res_manual_mix --wandb_project lab_exposure --ckpt scratch

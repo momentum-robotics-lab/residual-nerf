@@ -22,6 +22,6 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/wine --workspace wine_normal -O --bound 4 --scale 0.8 --dt_gamma 0  --iters $ITERATIONS --type wrap --test --d_thresh 0.0 --gui
-# --ckpt scratch --wandb --wandb_name wine_normal --wandb_project wine  
+python3 main_nerf.py data/wine --workspace wine_normal -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 3.5 \
+--ckpt scratch --wandb --wandb_name wine_normal_bgsigma --wandb_project wine  
 
