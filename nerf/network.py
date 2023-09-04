@@ -129,7 +129,7 @@ class NeRFNetwork(NeRFRenderer):
 
         combine_param_res = None
         if bg_sigma is not None:
-            # bg_sigma_expanded = bg_sigma.unsqueeze(-1)
+            # bg_sigma_expanded = bg_raw_sigma.unsqueeze(-1)
             # h = torch.cat([x, bg_sigma_expanded], dim=-1)
             h = x
             for l in range(self.num_layers):

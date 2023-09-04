@@ -76,6 +76,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_layers',default=2,type=int)
     parser.add_argument('--mixnet_reg',default=0.0,type=float)
     parser.add_argument('--aabb_infer',default=None,type=float,nargs='*')
+    parser.add_argument('--downscale',default=1.0,type=float)
     opt = parser.parse_args()
 
     
@@ -173,7 +174,7 @@ if __name__ == '__main__':
             gui.render()
         
         else:
-            test_loader = NeRFDataset(opt, device=device, split='test',type=opt.type ).dataloader()
+            test_loader = NeRFDataset(opt, device=device, split='test',type=opt.type ,downscale=opt.downscale).dataloader()
 
             # if test_loader.has_gt:
             #     trainer.evaluate(test_loader) # blender has gt, so evaluate it.
@@ -186,7 +187,7 @@ if __name__ == '__main__':
 
         optimizer = lambda model: torch.optim.Adam(model.get_params(opt.lr), betas=(0.9, 0.99), eps=1e-15)
 
-        train_loader = NeRFDataset(opt, device=device, split='train',type=opt.type).dataloader()
+        train_loader = NeRFDataset(opt, device=device, split='train',type=opt.type,downscale=opt.downscale).dataloader()
 
                     
         
@@ -206,8 +207,8 @@ if __name__ == '__main__':
             gui.render()
         
         else:
-            valid_loader = NeRFDataset(opt, device=device, split='val', downscale=1,type=opt.type).dataloader()
-            test_loader = NeRFDataset(opt, device=device, split='test',type=opt.type).dataloader()
+            valid_loader = NeRFDataset(opt, device=device, split='val', downscale=opt.downscale,type=opt.type).dataloader()
+            test_loader = NeRFDataset(opt, device=device, split='test',type=opt.type,downscale=opt.downscale).dataloader()
 
             max_epoch = np.ceil(opt.iters / len(train_loader)).astype(np.int32)
             trainer.train(train_loader, valid_loader , max_epoch,opt=opt)

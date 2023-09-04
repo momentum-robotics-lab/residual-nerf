@@ -10,8 +10,8 @@ else
     export CUDA_VISIBLE_DEVICES=$1
 fi
 
-export BG_CHECKPOINT='wine_bg/checkpoints/ngp_bg_ep0100.pth'
-export ITERATIONS=10000
+export BG_CHECKPOINT='dslr_cup_bg/checkpoints/ngp_bg_ep0395.pth'
+export ITERATIONS=30000
 # second argument is number of iterations 
 if [ $# -lt 2 ]
   then
@@ -22,5 +22,7 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/wine --workspace wine_res_bg_sigma -O --dt_gamma 0 --iters $ITERATIONS --type wrap --bg_ckpt $BG_CHECKPOINT --test --d_thresh 2.5 --aabb_infer -1 1 -1 1 -1 1 --min_near 0.1 
+python3 main_nerf.py data/dslr_cup --workspace dslr_cup_res -O --dt_gamma 0 --scale 0.33 --bound 15.0 --iters $ITERATIONS --bg_ckpt $BG_CHECKPOINT --type wrap --d_thresh 3.5 --downscale 4.0 --min_near 0.5 --mixnet_reg 10.0 \
+--ckpt scratch --wandb --wandb_name dslr_cup_res_mixnet_reg_10_wine_setting --wandb_project dslr_cup
+
  

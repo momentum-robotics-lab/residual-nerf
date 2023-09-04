@@ -23,6 +23,6 @@ else
 fi
 
 python3 main_nerf.py data/vase --workspace vase_res -O --dt_gamma 0 --iters $ITERATIONS --type wrap --bg_ckpt $BG_CHECKPOINT --d_thresh 3.0 --mixnet_reg 10.0 \
---ckpt scratch --wandb --wandb_name vase_res --wandb_project vase 
+--ckpt scratch --wandb --wandb_name vase_res_bgsigma_input --wandb_project vase 
 
  

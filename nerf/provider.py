@@ -155,9 +155,12 @@ class NeRFDataset:
         if 'h' in transform and 'w' in transform:
             self.H = int(transform['h']) // downscale
             self.W = int(transform['w']) // downscale
+            self.H = int(self.H)
+            self.W = int(self.W)
         else:
             # we have to actually read an image to get H and W later.
             self.H = self.W = None
+        
         
         # read images
         frames = transform["frames"]
@@ -209,7 +212,10 @@ class NeRFDataset:
                 if self.H is None or self.W is None:
                     self.H = image.shape[0] // downscale
                     self.W = image.shape[1] // downscale
-
+                    
+                self.H = int(self.H)
+                self.W = int(self.W)
+                                                
                 # add support for the alpha channel as a mask.
                 if image.shape[-1] == 3: 
                     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)

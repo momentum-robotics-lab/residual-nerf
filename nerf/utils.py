@@ -527,6 +527,8 @@ class Trainer(object):
             loss = self.clip_loss(pred_rgb)
             loss += outputs['mixnet_coeff'].mean() * self.opt.mixnet_reg # encourage mixnet to be sparse
             
+            if self.use_wandb:
+                wandb.log({"train/mixnet_mean": outputs['mixnet_coeff'].mean()})
             return pred_rgb, None, loss
 
         images = data['images'] # [B, N, 3/4]
@@ -761,6 +763,7 @@ class Trainer(object):
             all_preds = []
             all_preds_depth = []
             all_preds_dex_depth = []
+            all_preds_dex_raw = []
             all_mix_preds = []
 
         with torch.no_grad():
@@ -784,6 +787,8 @@ class Trainer(object):
                 pred_depth = (pred_depth * 255).astype(np.uint8)
 
                 preds_dex_depth = preds_dex_depth[0].detach().cpu().numpy()
+                all_preds_dex_raw.append(preds_dex_depth)
+                
                 preds_dex_depth = (preds_dex_depth * 255).astype(np.uint8)
 
                 if write_video:
@@ -791,13 +796,18 @@ class Trainer(object):
                     all_preds_depth.append(pred_depth)
                     all_preds_dex_depth.append(preds_dex_depth)
                     all_mix_preds.append(mix_img)
+                    
                 else:
                     cv2.imwrite(os.path.join(save_path, f'{name}_{i:04d}_rgb.png'), cv2.cvtColor(pred, cv2.COLOR_RGB2BGR))
                     cv2.imwrite(os.path.join(save_path, f'{name}_{i:04d}_depth.png'), pred_depth)
                     cv2.imwrite(os.path.join(save_path, f'{name}_{i:04d}_dex_depth.png'), preds_dex_depth)
 
+                
                 pbar.update(loader.batch_size)
         
+        # saving depth as npy array
+        np.save(os.path.join(save_path, f'{name}_dex_depth.npy'),all_preds_dex_raw)
+
         if write_video:
             all_preds = np.stack(all_preds, axis=0)
             all_mix_preds = np.stack(all_mix_preds, axis=0)

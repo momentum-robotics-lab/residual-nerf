@@ -307,7 +307,7 @@ class NeRFGUI:
                     self.dex_thresh = app_data
                     self.need_update = True
                 
-                dpg.add_slider_float(label="dex_thresh", min_value=0.0, max_value=50.0, format="%.5f", default_value=0.0, callback=call_back_dex_thresh)
+                dpg.add_slider_float(label="dex_thresh", min_value=0.0, max_value=5.0, format="%.5f", default_value=0.0, callback=call_back_dex_thresh)
                 # dt_gamma slider
                 def callback_set_dt_gamma(sender, app_data):
                     self.opt.dt_gamma = app_data
