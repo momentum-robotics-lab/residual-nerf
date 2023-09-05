@@ -23,6 +23,6 @@ else
 fi
 
 python3 main_nerf.py data/dslr_cup --workspace dslr_cup_res -O --dt_gamma 0 --scale 0.33 --bound 15.0 --iters $ITERATIONS --bg_ckpt $BG_CHECKPOINT --type wrap --d_thresh 3.5 --downscale 4.0 --min_near 0.5 --mixnet_reg 10.0 \
---ckpt scratch --wandb --wandb_name dslr_cup_res_mixnet_reg_10_wine_setting --wandb_project dslr_cup
+--ckpt scratch --wandb --wandb_name dslr_cup_res_mixnet_wine_better_bg --wandb_project dslr_cup
 
  

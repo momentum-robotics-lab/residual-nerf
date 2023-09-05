@@ -22,6 +22,6 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/dslr_cup --workspace dslr_cup_normal -O --scale 0.33 --bound 15.0  --iters $ITERATIONS --type wrap --d_thresh 3.5 --downscale 4.0 --min_near 0.5  \
---ckpt scratch --wandb --wandb_name dslr_cup_normal --wandb_project dslr_cup 
+python3 main_nerf.py data/dslr_cup --workspace dslr_cup_normal -O --dt_gamma 0 --scale 0.33 --bound 15.0  --iters $ITERATIONS --type wrap --d_thresh 2.0 --downscale 4.0 --min_near 0.5  \
+--ckpt scratch --wandb --wandb_name dslr_cup_normal_dtgamma --wandb_project dslr_cup 
 
