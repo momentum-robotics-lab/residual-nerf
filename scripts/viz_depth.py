@@ -17,7 +17,7 @@ parser.add_argument('-i', type=str, default='depth.npy', help='path to depth fil
 parser.add_argument('-max', type=float, default=1.0, help='max depth value')
 parser.add_argument('-min', type=float, default=0.0, help='min depth value')
 parser.add_argument('-auto',action='store_true',help='auto min max')
-parser.add_argument('-o',type=str,default='depth.mp4',help='output file name')
+parser.add_argument('-o',type=str,default='output_depth',help='output folder for imgs')
 parser.add_argument('--debug',action='store_true',help='debug mode')
 args = parser.parse_args()
 
@@ -25,30 +25,33 @@ depths = np.load(args.i,allow_pickle=True)
 
 depths_new = []
 
-print(depths.shape)
+if os.path.exists(args.o):
+    os.system('rm -rf '+args.o)
+os.makedirs(args.o)
+
 for i in range(len(depths)):
-    # depths_new.append(depths[i][0])
 
-    if args.auto:
-        args.max = np.max(depths[i])
-        args.min = np.min(depths[i])
-        depth = (depths[i]-args.min)/(args.max - args.min)
-    else:
 
-        depth = depths[i]
-        depth = np.clip(depth,args.min,args.max)
-        depth = (depth-args.min)/(args.max - args.min)
+    depth = depths[i]
+    depth = np.clip(depth,args.min,args.max)
+    depth = (depth-args.min)/(args.max - args.min)
     
     
     image = depth
-    # image = cv2.applyColorMap(np.uint8(depth*255), cv2.COLORMAP_TURBO)
-    # image = depth
-    if args.debug:
-        plt.imshow(image)
-        plt.show()
-        exit()
-    depths_new.append(image)
+    plt.clf()
+    plt.imshow(image,cmap='magma')
+
+    # turn off outer axes
+    plt.axis('off')
+
+    # tight layout
+    plt.tight_layout()
+
+
+    # save image
+    plt.savefig(os.path.join(args.o,'{:04d}.png'.format(i)),bbox_inches='tight',pad_inches=0)
+
+    # plt.show()
 
 
 
-imageio.mimwrite(args.o, to8b(depths_new), fps=25, quality=8, macro_block_size=1)

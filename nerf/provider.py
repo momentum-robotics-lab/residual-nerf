@@ -235,7 +235,8 @@ class NeRFDataset:
                 elif self.type == f['type']:
                     self.poses.append(pose)
                     self.images.append(image)
-                        
+        
+        
         self.poses = torch.from_numpy(np.stack(self.poses, axis=0)) # [N, 4, 4]
         if self.images is not None:
             self.images = torch.from_numpy(np.stack(self.images, axis=0)) # [N, H, W, C]

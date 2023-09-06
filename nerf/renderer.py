@@ -385,6 +385,7 @@ class NeRFRenderer(nn.Module):
                 raymarching.composite_rays(n_alive, n_step, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum, depth,dex_depth, image,mixnet_image, T_thresh,D_thresh,sigmas_raw,None,mixnet)
                 
                 dex_depth[dex_depth==dex_init] = 0.0
+                # print(dex_depth.min(),dex_depth.max(),dex_depth.mean())  
                 rays_alive = rays_alive[rays_alive >= 0]
 
                 #print(f'step = {step}, n_step = {n_step}, n_alive = {n_alive}, xyzs: {xyzs.shape}')
@@ -401,6 +402,7 @@ class NeRFRenderer(nn.Module):
                 nears = nears_force
 
             depth = torch.clamp(depth - nears, min=0) / (fars - nears)
+            dex_depth_raw = dex_depth.clone()
             dex_depth = torch.clamp(dex_depth - nears, min=0) / (fars - nears)
 
             image = image.view(*prefix, 3)
@@ -417,6 +419,7 @@ class NeRFRenderer(nn.Module):
             results['mixnet_coeff'] = mixnet
 
         results['dex_depth'] = dex_depth
+        results['dex_depth_raw'] = dex_depth_raw
         results['rgbs'] = rgbs
         results['sigmas'] = sigmas
         results['sigmas_raw'] = sigmas_raw

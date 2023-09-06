@@ -10,8 +10,8 @@ else
     export CUDA_VISIBLE_DEVICES=$1
 fi
 
-export BG_CHECKPOINT='lab_dslr_bg/checkpoints/ngp_bg_ep0371.pth'
-export ITERATIONS=10000
+export BG_CHECKPOINT='dslr_cup_bg/checkpoints/ngp_bg_ep0395.pth'
+export ITERATIONS=30000
 # second argument is number of iterations 
 if [ $# -lt 2 ]
   then

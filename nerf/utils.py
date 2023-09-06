@@ -657,7 +657,7 @@ class Trainer(object):
         return pred_rgb, pred_depth, gt_rgb, loss
 
     # moved out bg_color and perturb for more flexible control...
-    def test_step(self, data, bg_color=None, perturb=False,return_dex = False,D_thresh = None,return_mixnet=False):  
+    def test_step(self, data, bg_color=None, perturb=False,return_dex = False,D_thresh = None,return_mixnet=False,return_dex_raw=True):  
 
         rays_o = data['rays_o'] # [B, N, 3]
         rays_d = data['rays_d'] # [B, N, 3]
@@ -680,6 +680,8 @@ class Trainer(object):
         if return_mixnet:
             result += (outputs['mixnet_img'].reshape(-1, H, W, 3),)
 
+        if return_dex_raw:
+            result += (outputs['dex_depth_raw'].reshape(-1, H, W),)
 
         return result
 
@@ -771,7 +773,7 @@ class Trainer(object):
             for i, data in enumerate(loader):
                 
                 with torch.cuda.amp.autocast(enabled=self.fp16):
-                    preds, preds_depth, preds_dex_depth, mix_imgs = self.test_step(data,return_dex=True,D_thresh=self.opt.d_thresh,return_mixnet=True)
+                    preds, preds_depth, preds_dex_depth, mix_imgs, dex_raw = self.test_step(data,return_dex=True,D_thresh=self.opt.d_thresh,return_mixnet=True,return_dex_raw=True)
 
                 if self.opt.color_space == 'linear':
                     preds = linear_to_srgb(preds)
@@ -786,10 +788,11 @@ class Trainer(object):
                 pred_depth = preds_depth[0].detach().cpu().numpy()
                 pred_depth = (pred_depth * 255).astype(np.uint8)
 
-                preds_dex_depth = preds_dex_depth[0].detach().cpu().numpy()
-                all_preds_dex_raw.append(preds_dex_depth)
-                
+                preds_dex_depth = preds_dex_depth[0].detach().cpu().numpy()              
                 preds_dex_depth = (preds_dex_depth * 255).astype(np.uint8)
+
+                preds_dex_raw = dex_raw[0].detach().cpu().numpy()
+                all_preds_dex_raw.append(preds_dex_raw)
 
                 if write_video:
                     all_preds.append(pred)

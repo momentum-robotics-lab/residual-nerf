@@ -22,6 +22,5 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/dslr_cup --workspace dslr_cup_normal -O --dt_gamma 0 --scale 0.33 --bound 15.0  --iters $ITERATIONS --gui --type wrap --d_thresh 2.0 --downscale 4.0 --min_near 0.5 --test --aabb_infer -4.0 0.33 -1.10 0.77  -0.66 0.66
-
+python3 main_nerf.py data/lab_dslr --workspace lab_dslr_normal -O --dt_gamma 0 --scale 0.33 --bound 16.0  --iters $ITERATIONS --type wrap --d_thresh 2.0 --downscale 2 --test --gui
 
