@@ -22,5 +22,5 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/wine --workspace wine_normal -O --dt_gamma 0  --iters $ITERATIONS --type wrap --test --d_thresh 3.5 --aabb_infer -1 1 -1 1 -1 1 --gui
+python3 main_nerf.py data/wine --workspace wine_normal -O --dt_gamma 0  --iters $ITERATIONS --type wrap --test --d_thresh 3.5 --aabb_infer -1 1 -1 1 -1 1 
 

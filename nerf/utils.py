@@ -657,7 +657,7 @@ class Trainer(object):
         return pred_rgb, pred_depth, gt_rgb, loss
 
     # moved out bg_color and perturb for more flexible control...
-    def test_step(self, data, bg_color=None, perturb=False,return_dex = False,D_thresh = None,return_mixnet=False,return_dex_raw=True):  
+    def test_step(self, data, bg_color=None, perturb=False,return_dex = False,D_thresh = None,return_mixnet=False,return_dex_raw=False):  
 
         rays_o = data['rays_o'] # [B, N, 3]
         rays_d = data['rays_d'] # [B, N, 3]

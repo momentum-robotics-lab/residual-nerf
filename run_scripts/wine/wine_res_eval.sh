@@ -22,5 +22,5 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/wine --workspace wine_res_bg_sigma -O --dt_gamma 0 --iters $ITERATIONS --type wrap --bg_ckpt $BG_CHECKPOINT --test --d_thresh 2.5 --aabb_infer -1 1 -1 1 -1 1 --min_near 0.1 --gui 
+python3 main_nerf.py data/wine --workspace wine_res_bg_sigma -O --dt_gamma 0 --iters $ITERATIONS --type wrap --bg_ckpt $BG_CHECKPOINT --test --d_thresh 2.5 --aabb_infer -1 1 -1 1 -1 1 --min_near 0.1  
  

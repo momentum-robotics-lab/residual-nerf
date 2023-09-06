@@ -33,20 +33,27 @@ for i in range(len(depths)):
 
 
     depth = depths[i]
+    if args.debug:
+        plt.imshow(depth,cmap='magma')
+        plt.show()
+        exit()
     depth = np.clip(depth,args.min,args.max)
     depth = (depth-args.min)/(args.max - args.min)
     
     
     image = depth
+    
+        
+
     plt.clf()
     plt.imshow(image,cmap='magma')
+    
 
     # turn off outer axes
     plt.axis('off')
 
     # tight layout
     plt.tight_layout()
-
 
     # save image
     plt.savefig(os.path.join(args.o,'{:04d}.png'.format(i)),bbox_inches='tight',pad_inches=0)
