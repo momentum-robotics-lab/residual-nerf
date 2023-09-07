@@ -23,4 +23,4 @@ else
 fi
 
 
-python3 main_nerf.py data/dslr_bakje --workspace dslr_bakje_normal -O --dt_gamma 0 --bg_ckpt $BG_CHECKPOINT --iters $ITERATIONS --type wrap --gui --d_thresh 2.0 --downscale 4.0 --min_near 0.2 --test --aabb_infer -4.0 0.33 -1.10 0.77  -0.66 0.66
+python3 main_nerf.py data/dslr_bakje --workspace dslr_bakje_res -O --dt_gamma 0 --bg_ckpt $BG_CHECKPOINT --iters $ITERATIONS --type wrap --d_thresh 3.0 --downscale 4.0 --min_near 0.2 --test --aabb_infer -4.0 0.33 -1.10 0.77  -0.66 0.66

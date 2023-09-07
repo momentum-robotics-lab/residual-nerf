@@ -22,7 +22,7 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/lab_dslr --workspace lab_dslr_res_bgsigma -O --dt_gamma 0 --scale 0.33 --bound 15.0 --iters $ITERATIONS --bg_ckpt $BG_CHECKPOINT --type wrap --d_thresh 3.5 --downscale 4.0 --min_near 0.1 \
---ckpt scratch --wandb --wandb_name lab_dslr_res_4x_downscale_bgsigma --wandb_project lab_dslr 
+python3 main_nerf.py data/lab_dslr --workspace lab_dslr_res_bgsigma -O --dt_gamma 0 --iters $ITERATIONS --bg_ckpt $BG_CHECKPOINT --type wrap --d_thresh 2.5 --downscale 4.0 --min_near 0.2 \
+--ckpt scratch --wandb --wandb_name lab_dslr_res --wandb_project lab_dslr 
 
  

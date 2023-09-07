@@ -332,6 +332,7 @@ class NeRFRenderer(nn.Module):
                 depth = depth.view(*prefix)
                 dex_depth = dex_depth.view(*prefix)
             
+            dex_depth_raw = dex_depth.clone()
             
             results['weights_sum'] = weights_sum
 
