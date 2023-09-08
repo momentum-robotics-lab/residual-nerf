@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import cv2 
 import pyroexr
 import glob
-
+import prettytable as pt
 # some data (512x512)
 
 # map the normalized data to colors
@@ -22,9 +22,27 @@ parser.add_argument('--thresh',type=float,default=1.5)
 args = parser.parse_args()
 
 class Depth:
-    def __init__(self,depth,gt):
-        self.depth = depth
-        self.gt = gt
+    def __init__(self,depth,gt,name=None):
+        self.name=name
+        self.infer_depth = depth.flatten()
+        self.gt_depth = gt.flatten()
+        self.mask = self.gt_depth < args.thresh 
+        self.infer_depth = self.infer_depth[self.mask]
+        self.gt_depth = self.gt_depth[self.mask]
+
+        self.rmse = self.rmse()
+        self.mae = self.mae()
+
+    def rmse(self):
+        # remove values off the table
+        rmse = np.sqrt(np.mean((self.gt_depth - self.infer_depth)**2))
+
+        return rmse
+
+    def mae(self):
+        mae = np.mean(np.abs(self.gt_depth - self.infer_depth))
+        return mae
+
 
 class Scene:
     # init
@@ -53,7 +71,7 @@ class Scene:
             # scale depth
             depth *= (1.0/args.scale)
             
-            self.depths.append(Depth(depth,self.gt))
+            self.depths.append(Depth(depth,self.gt,name=os.path.basename(f)))
 
     def debug(self):
         ax1 = plt.subplot(1,self.n_depths+1,1)
@@ -79,40 +97,13 @@ scenes = [s for s in scenes if os.path.isdir(s)]
 
 scenes = [Scene(s) for s in scenes]
 
+# put rmse and mae into table 
 
-# # N x H x W
-# gt_depth = np.load(args.gt)[:,:,:,0]
-# # gt_depth = gt_depth[:,:,:,0]
-# # N x H x W
-# infer_depth = np.load(args.infer)
-# infer_depth *= (1.0/args.scale)
-# if args.debug:
-#     ax1 = plt.subplot(1,2,1)
-#     ax1.imshow(gt_depth[0])
-#     ax2 = plt.subplot(1,2,2)
-#     ax2.imshow(infer_depth[0])
+table = pt.PrettyTable()
+table.field_names = ['Scene','Model','RMSE','MAE']
+for scene in scenes:
+    for depth in scene.depths:
+        table.add_row([scene.scene_dir,depth.name,depth.rmse,depth.mae])
 
-#     #title first plot 
-#     ax1.set_title('Ground Truth')
-#     ax2.set_title('Inferred Depth')
+print(table)
 
-#     plt.show()
-
-
-# # compute error metrics
-
-# # RMSE
-# # N x H x W
-
-# # flatten to (N*H*W)
-# gt_depth = gt_depth.flatten()
-# infer_depth = infer_depth.flatten()
-
-# # remove values off the table
-# mask = gt_depth < args.thresh 
-# gt_depth = gt_depth[mask]
-# infer_depth = infer_depth[mask]
-
-# rmse = np.sqrt(np.mean((gt_depth - infer_depth)**2))
-
-# print('RMSE: ', rmse)
