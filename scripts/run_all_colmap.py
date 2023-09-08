@@ -32,7 +32,7 @@ for folder in folders:
 
     image_dir = os.path.join(scene_dir, 'images')
     os.mkdir(image_dir)
-    json_file = os.path.join(scene_dir,'transforms.json')
+    json_file = 'transforms.json'
 
     # Run colmap on the folder
     os.system('python3 scripts/colmap_prep.py --images_bg {} --images_wrap {} --images {} --out {}'.format(background_folder,folder,image_dir,json_file))
