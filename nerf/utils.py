@@ -557,25 +557,8 @@ class Trainer(object):
 
         # MSE loss
         loss = self.criterion(pred_rgb, gt_rgb).mean(-1) # [B, N, 3] --> [B, N]
-        
-        combined_loss_total = None
-        if self.combine_model is not None:
-            supervise_xyzs = outputs['xyzs']
-            superivse_dirs = outputs['dirs']
-            combined_sigmas, combines_rgbs, combined_raw_sigmas, combined_raw_rgbs  = self.combine_model(supervise_xyzs,superivse_dirs,return_features=True)
-
-            combined_loss_rgbs = self.criterion(combined_raw_rgbs,outputs['rgbs_raw']).mean(-1)
-            combined_loss_sigmas = self.criterion(combined_raw_sigmas,outputs['sigmas_raw']).mean(-1)
-
-            
-            # combined_loss_total = combined_loss_rgbs + combined_loss_sigmas
-            combined_loss_total = combined_loss_rgbs.mean() + combined_loss_sigmas.mean()
-            # combined_loss_total = combined_loss_total.mean()
-
-            if self.use_wandb:
-                wandb.log({"train/combined_loss_rgbs": combined_loss_rgbs.mean(),"train/combined_loss_sigmas": combined_loss_sigmas.mean(),"train/combined_loss_total": combined_loss_total.mean()})
-
-
+        loss += outputs['mixnet_coeff'].mean() * self.opt.mixnet_reg # encourage mixnet to be sparse
+       
         # patch-based rendering
         if self.opt.patch_size > 1:
             gt_rgb = gt_rgb.view(-1, self.opt.patch_size, self.opt.patch_size, 3).permute(0, 3, 1, 2).contiguous()
@@ -622,7 +605,7 @@ class Trainer(object):
         # loss_ws = - 1e-1 * pred_weights_sum * torch.log(pred_weights_sum) # entropy to encourage weights_sum to be 0 or 1.
         # loss = loss + loss_ws.mean()
 
-        return pred_rgb, gt_rgb, loss, combined_loss_total
+        return pred_rgb, gt_rgb, loss, None
 
     def eval_step(self, data):
 

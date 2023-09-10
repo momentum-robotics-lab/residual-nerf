@@ -227,7 +227,6 @@ class NeRFDataset:
                     
                 image = image.astype(np.float32) / 255 # [H, W, 3/4]
                 
-                
                 if self.type == 'all':
                     self.poses.append(pose)
                     self.images.append(image)

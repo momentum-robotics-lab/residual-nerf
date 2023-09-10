@@ -22,6 +22,6 @@ else
     export ITERATIONS=$2
 fi
 
-python3 main_nerf.py data/dslr_wine --workspace dslr_wine_normal -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 2.0 --downscale 4.0 --min_near 0.2  \
---ckpt scratch --wandb --wandb_name dslr_wine_normal_near_0.2 --wandb_project dslr_wine 
+python3 main_nerf.py data/dslr_wine --workspace dslr_wine_normal -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 2.0 --downscale 4.0 --min_near 0.2  --density_thresh 2.0 \
+--ckpt scratch --wandb --wandb_name dslr_wine_normal_density_thresh_2.0 --wandb_project dslr_wine 
 

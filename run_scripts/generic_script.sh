@@ -27,17 +27,14 @@ fi
 
 
 
-# run the normal version
-python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_normal' -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 2.0 --downscale 4.0 --min_near 0.2  \
---ckpt scratch 
-# --wandb --wandb_name $WORKSPACE'_normal' --wandb_project $WORKSPACE 
+# # run the normal version
+python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_normal' -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 2.0 --downscale 1.0 --min_near 0.2  \
+--ckpt scratch --wandb --wandb_name $WORKSPACE'_normal' --wandb_project $WORKSPACE 
 
 # run the background nerf
-python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_bg' -O --dt_gamma 0  --iters $ITERATIONS --type bg --d_thresh 2.0 --downscale 4.0 --min_near 0.2  \
---ckpt scratch 
-# --wandb --wandb_name $WORKSPACE'_bg' --wandb_project $WORKSPACE 
+python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_bg' -O --dt_gamma 0  --iters $ITERATIONS --type bg --d_thresh 2.0 --downscale 1.0 --min_near 0.2  \
+--ckpt scratch --wandb --wandb_name $WORKSPACE'_bg' --wandb_project $WORKSPACE 
 
 # run the residual nerf
-python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_res' -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 2.0 --downscale 4.0 --min_near 0.2  \
---ckpt scratch 
-# --wandb --wandb_name $WORKSPACE'_res' --wandb_project $WORKSPACE  --bg_ckpt $BG_CHECKPOINT
+python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_res' -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 2.0 --downscale 1.0 --min_near 0.2 --mixnet_reg 0.001 \
+--ckpt scratch --wandb --wandb_name $WORKSPACE'_res' --wandb_project $WORKSPACE  --bg_ckpt $BG_CHECKPOINT

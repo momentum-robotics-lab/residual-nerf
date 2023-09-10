@@ -23,5 +23,5 @@ else
 fi
 
 
-python3 main_nerf.py data/dslr_wine --workspace dslr_wine_normal -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 2.5 --downscale 4.0 --min_near 0.2 --test --aabb_infer -4.0 0.33 -1.10 0.77  -0.66 0.66
+python3 main_nerf.py data/dslr_wine --workspace dslr_wine_normal -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 2.5 --downscale 4.0 --min_near 0.2 --test --aabb_infer -4.0 0.33 -1.10 0.77  -0.66 0.66  --density_thresh 2.0 
 
