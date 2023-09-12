@@ -138,6 +138,7 @@ class NeRFNetwork(NeRFRenderer):
                     h = F.relu(h, inplace=True)
         
             h_sigmoided = torch.sigmoid(h[..., 0])
+            # h_sigmoided = trunc_exp(h[..., 0])
             combine_param_res = h_sigmoided
             combine_param_bg = (1.0-h_sigmoided)
 

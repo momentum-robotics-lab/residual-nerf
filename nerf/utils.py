@@ -631,12 +631,6 @@ class Trainer(object):
 
         loss = self.criterion(pred_rgb, gt_rgb).mean()
 
-        if self.use_wandb:
-            psrn_tool = PSNRMeter()
-            psrn_tool.update(pred_rgb,gt_rgb)
-            psrn = psrn_tool.measure()
-            wandb.log({"val/psnr": psrn})
-
         return pred_rgb, pred_depth, gt_rgb, loss
 
     # moved out bg_color and perturb for more flexible control...
@@ -713,7 +707,7 @@ class Trainer(object):
                 if self.combine_model is not None:
                     self.save_combined_checkpoint(self.combine_model,full=True,best=False)
 
-            if self.epoch % self.eval_interval == 0:
+            if self.epoch % self.eval_interval == 0 or self.epoch == 0:
                 self.evaluate_one_epoch(valid_loader)
                 self.save_checkpoint(full=False, best=True)
 
@@ -1145,6 +1139,12 @@ class Trainer(object):
                 self.stats["results"].append(result if self.best_mode == 'min' else - result) # if max mode, use -result
             else:
                 self.stats["results"].append(average_loss) # if no metric, choose best by min loss
+            
+
+            if self.use_wandb:
+                psnr_tool = self.metrics[0]
+                psrn = psnr_tool.measure()
+                wandb.log({"val/psnr": psrn})
 
             for metric in self.metrics:
                 self.log(metric.report(), style="blue")
@@ -1256,7 +1256,11 @@ class Trainer(object):
     
     def load_bg_checkpoint(self,checkpoint=None):
         success = False
+        
         if checkpoint is not None and self.bg_model is not None:
+            checkpoint_list = sorted(glob.glob(f'{checkpoint}/ngp_bg_ep*.pth'))
+            checkpoint = checkpoint_list[-1]
+
             checkpoint_dict = torch.load(checkpoint, map_location=self.device)
 
             if 'model' not in checkpoint_dict:

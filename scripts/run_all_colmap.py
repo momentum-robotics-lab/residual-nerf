@@ -2,7 +2,7 @@ import glob
 import os
 
 dataset_dir = 'real_dataset' 
-results_dir = 'colmap_results'
+results_dir = 'colmap_results_new'
 
 if os.path.exists(results_dir):
     print('Results directory already exists')

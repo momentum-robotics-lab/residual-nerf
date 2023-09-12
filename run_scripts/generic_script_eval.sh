@@ -12,8 +12,9 @@ fi
 
 export DATA_PATH=$3
 export WORKSPACE=$4
+export DOWNSCALE=$5
 
-export BG_CHECKPOINT=$WORKSPACE'_bg/checkpoints/ngp_bg.pth'
+export BG_CHECKPOINT=$WORKSPACE'_bg/checkpoints/ngp_bg_ep0110.pth'
 export ITERATIONS=30000
 # second argument is number of iterations 
 if [ $# -lt 2 ]
@@ -27,13 +28,17 @@ fi
 
 
 
-# # run the normal version
-python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_normal' -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 2.5 --downscale 4.0 --min_near 0.2  \
---test --aabb_infer -4.0 0.33 -1.10 0.77  -0.66 0.66 
+# # # run the normal version
+python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_normal' -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 2.5 --downscale $DOWNSCALE --min_near 0.2  \
+--test --aabb_infer -4.0 0.33 -1.10 0.77  -0.66 0.66
 
 # run the background nerf
 python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_bg' -O --dt_gamma 0  --iters $ITERATIONS --type bg --d_thresh 2.5 --downscale 4.0 --min_near 0.2  \
 --test --aabb_infer -4.0 0.33 -1.10 0.77  -0.66 0.66 
-# run the residual nerf
-python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_res' -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 2.5 --downscale 4.0 --min_near 0.2 --mixnet_reg 0.001 \
- --bg_ckpt $BG_CHECKPOINT --test --aabb_infer -4.0 0.33 -1.10 0.77  -0.66 0.66 
+run the residual nerf
+python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_normal' -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 2.0 --downscale 4.0 --min_near 0.2  \
+ --bg_ckpt $BG_CHECKPOINT --test --aabb_infer -4.0 0.33 -1.10 0.77  -0.66 0.66
+
+python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_res_no_reg' -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 3.5 --downscale 4.0 --min_near 0.2  \
+ --bg_ckpt $BG_CHECKPOINT --test --aabb_infer -4.0 0.33 -1.10 0.77  -0.66 0.66
+ 

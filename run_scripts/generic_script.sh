@@ -13,8 +13,9 @@ fi
 export DATA_PATH=$3
 export WORKSPACE=$4
 export DOWNSCALE=$5
+export OUT_FOLDER=$6
 
-export BG_CHECKPOINT=$WORKSPACE'_bg/checkpoints/ngp_bg.pth'
+export BG_CHECKPOINT=$OUT_FOLDER'/'$WORKSPACE'_bg/checkpoints/'
 export ITERATIONS=30000
 
 # second argument is number of iterations 
@@ -30,13 +31,13 @@ fi
 
 
 # # run the normal version
-python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_normal' -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 2.0 --downscale $DOWNSCALE --min_near 0.2  \
---ckpt scratch --wandb --wandb_name $WORKSPACE'_normal' --wandb_project $WORKSPACE 
+python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_normal' -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 3.0 --downscale $DOWNSCALE --min_near 0.2 --eval_interval 10  \
+--ckpt scratch --wandb --wandb_name $WORKSPACE'_normal' --wandb_project $WORKSPACE --results_dir $OUT_FOLDER
 
-# run the background nerf
-python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_bg' -O --dt_gamma 0  --iters $ITERATIONS --type bg --d_thresh 2.0 --downscale $DOWNSCALE --min_near 0.2  \
---ckpt scratch --wandb --wandb_name $WORKSPACE'_bg' --wandb_project $WORKSPACE 
+# # run the background nerf
+python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_bg' -O --dt_gamma 0  --iters $ITERATIONS --type bg --d_thresh 3.0 --downscale $DOWNSCALE --min_near 0.2 --eval_interval 10 \
+--ckpt scratch --wandb --wandb_name $WORKSPACE'_bg' --wandb_project $WORKSPACE --results_dir $OUT_FOLDER
 
 # run the residual nerf
-python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_res' -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 2.0 --downscale $DOWNSCALE --min_near 0.2 --mixnet_reg 0.0001 \
---ckpt scratch --wandb --wandb_name $WORKSPACE'_res' --wandb_project $WORKSPACE  --bg_ckpt $BG_CHECKPOINT
+python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_res' --bg_ckpt $BG_CHECKPOINT -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 3.0 --downscale $DOWNSCALE --min_near 0.2 --mixnet_reg 0.00 \
+--ckpt scratch --wandb --wandb_name $WORKSPACE'_res' --wandb_project $WORKSPACE   --results_dir $OUT_FOLDER

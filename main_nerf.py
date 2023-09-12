@@ -77,8 +77,14 @@ if __name__ == '__main__':
     parser.add_argument('--mixnet_reg',default=0.0,type=float)
     parser.add_argument('--aabb_infer',default=None,type=float,nargs='*')
     parser.add_argument('--downscale',default=1.0,type=float)
+    parser.add_argument('--results_dir',default='results/sim',type=str)
     opt = parser.parse_args()
 
+
+    if not os.path.exists(opt.results_dir):
+        os.makedirs(opt.results_dir)
+
+    opt.workspace = os.path.join(opt.results_dir,opt.workspace)
     
 
     if opt.wandb:
