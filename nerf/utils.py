@@ -525,7 +525,7 @@ class Trainer(object):
             #torch_vis_2d(pred_rgb[0])
 
             loss = self.clip_loss(pred_rgb)
-            loss += outputs['mixnet_coeff'].mean() * self.opt.mixnet_reg # encourage mixnet to be sparse
+            loss += outputs['alpha_penalty'].mean() * self.opt.mixnet_reg # encourage mixnet to be sparse
             
             if self.use_wandb:
                 wandb.log({"train/mixnet_mean": outputs['mixnet_coeff'].mean()})

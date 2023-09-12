@@ -111,7 +111,7 @@ class NeRFNetwork(NeRFRenderer):
             self.bg_net = None
 
 
-    def forward(self, x, d,bg_model=None,return_features=False,return_bg_raw=False, return_mixnet=False):
+    def forward(self, x, d,bg_model=None,return_features=False,return_bg_raw=False, return_mixnet=False,deltas=None):
         # x: [N, 3], in [-bound, bound]
         # d: [N, 3], nomalized in [-1, 1]
         # sigma
@@ -173,7 +173,10 @@ class NeRFNetwork(NeRFRenderer):
         raw_sigma = raw_sigma_combined.clone()
         # raw_sigma_combined = h[...,0]
         sigma = trunc_exp(raw_sigma_combined)
-        
+        if deltas is not None:
+            weights = 1.0 - torch.exp(-sigma*deltas )
+            weights = weights.unsqueeze(-1)
+            alpha_penalty = weights * combine_param_res
         # if bg_sigma is not None:
         #     sigma = sigma + bg_sigma
             
@@ -219,6 +222,9 @@ class NeRFNetwork(NeRFRenderer):
         
         if return_mixnet:
             result += (combine_param_res,)
+        
+        if deltas is not None:
+            result += (alpha_penalty,)
 
                 
         
