@@ -23,13 +23,13 @@ args = parser.parse_args()
 
 class Depth:
     def __init__(self,depth,gt,name=None):
-        self.name=name
+        self.name=name[:-4]
+        self.viz_depth = depth[0]
         self.infer_depth = depth.flatten()
         self.gt_depth = gt.flatten()
         self.mask = self.gt_depth < args.thresh 
         self.infer_depth = self.infer_depth[self.mask]
         self.gt_depth = self.gt_depth[self.mask]
-
         self.rmse = self.rmse()
         self.mae = self.mae()
 
@@ -80,9 +80,8 @@ class Scene:
         ax1.set_title('Ground Truth')
 
         for i in range(1,self.n_depths+1):
-            print(i)
             ax = plt.subplot(1,self.n_depths+1,i+1)
-            ax.imshow(self.depths[i-1].depth[0])
+            ax.imshow(self.depths[i-1].viz_depth)
             ax.set_title(self.depth_names[i-1])
         
 
@@ -95,15 +94,34 @@ scenes = glob.glob(os.path.join(args.dir,'*'))
 # filter out non dirs
 scenes = [s for s in scenes if os.path.isdir(s)]
 
+# check if empty 
+scenes = [s for s in scenes if len(os.listdir(s)) > 0]
+
+# check if gt.npy exists
+scenes = [s for s in scenes if os.path.exists(os.path.join(s,'gt.npy'))]
+
 scenes = [Scene(s) for s in scenes]
 
 # put rmse and mae into table 
 
 table = pt.PrettyTable()
-table.field_names = ['Scene','Model','RMSE','MAE']
+
+
+depth_names = ['dex','nerf','ours']
+# 
+field_names = ['Scene']
+for depth_name in depth_names:
+    field_names.append(depth_name + ' MAE')
+    field_names.append(depth_name + ' RMSE')
+    
+
+table.field_names = field_names
 for scene in scenes:
-    for depth in scene.depths:
-        table.add_row([scene.scene_dir,depth.name,depth.rmse,depth.mae])
+    row = [scene.scene_dir]
+    for depth_name in depth_names:
+        depth = [d for d in scene.depths if d.name == depth_name][0]
+        row.append(depth.mae)
+        row.append(depth.rmse)
+    table.add_row(row)
 
 print(table)
-

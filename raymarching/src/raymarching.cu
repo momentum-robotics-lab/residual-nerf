@@ -824,7 +824,6 @@ void march_rays(const uint32_t n_alive, const uint32_t n_step, const at::Tensor 
     }));
 }
 
-
 template <typename scalar_t>
 __global__ void kernel_composite_rays(
     const uint32_t n_alive, 

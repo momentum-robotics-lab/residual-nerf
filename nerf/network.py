@@ -174,9 +174,9 @@ class NeRFNetwork(NeRFRenderer):
         # raw_sigma_combined = h[...,0]
         sigma = trunc_exp(raw_sigma_combined)
         if deltas is not None:
-            weights = 1.0 - torch.exp(-sigma*deltas )
-            weights = weights.unsqueeze(-1)
+            weights = 1.0 - torch.exp(-sigma*deltas[:,0] )
             alpha_penalty = weights * combine_param_res
+
         # if bg_sigma is not None:
         #     sigma = sigma + bg_sigma
             

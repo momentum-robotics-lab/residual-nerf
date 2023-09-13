@@ -288,7 +288,7 @@ class NeRFRenderer(nn.Module):
             xyzs, dirs, deltas, rays = raymarching.march_rays_train(rays_o, rays_d, self.bound, self.density_bitfield, self.cascade, self.grid_size, nears, fars, counter, self.mean_count, perturb, 128, force_all_rays, dt_gamma, max_steps)
 
             #plot_pointcloud(xyzs.reshape(-1, 3).detach().cpu().numpy())
-            sigmas, rgbs, sigmas_raw, rgbs_raw, bg_sigmas, bg_rgbs, mixnet = self(xyzs, dirs,bg_model=bg_model,return_features=True,return_bg_raw=True,return_mixnet=True)
+            sigmas, rgbs, sigmas_raw, rgbs_raw, bg_sigmas, bg_rgbs, mixnet, alpha_penalty = self(xyzs, dirs,bg_model=bg_model,return_features=True,return_bg_raw=True,return_mixnet=True,deltas=deltas)
             # density_outputs = self.density(xyzs) # [M,], use a dict since it may include extra things, like geo_feat for rgb.
             # sigmas = density_outputs['sigma']
             # rgbs = self.color(xyzs, dirs, **density_outputs)
@@ -334,6 +334,7 @@ class NeRFRenderer(nn.Module):
                 dex_depth = dex_depth.view(*prefix)
             
             dex_depth_raw = dex_depth.clone()
+            depth_raw = depth.clone()
             
             results['weights_sum'] = weights_sum
 
@@ -373,7 +374,7 @@ class NeRFRenderer(nn.Module):
                 n_step = max(min(N // n_alive, 8), 1)
 
                 xyzs, dirs, deltas = raymarching.march_rays(n_alive, n_step, rays_alive, rays_t, rays_o, rays_d, self.bound, self.density_bitfield, self.cascade, self.grid_size, nears, fars, 128, perturb if step == 0 else False, dt_gamma, max_steps)
-                sigmas, rgbs, sigmas_raw, rgbs_raw, bg_sigmas, bg_rgbs,mixnet, alpha_penalty = self(xyzs, dirs,bg_model=bg_model,return_features=True,return_bg_raw=True,return_mixnet=True,deltas=deltas)
+                sigmas, rgbs, sigmas_raw, rgbs_raw, bg_sigmas, bg_rgbs,mixnet = self(xyzs, dirs,bg_model=bg_model,return_features=True,return_bg_raw=True,return_mixnet=True)
                 # density_outputs = self.density(xyzs) # [M,], use a dict since it may include extra things, like geo_feat for rgb.
                 # sigmas = density_outputs['sigma']
                 # rgbs = self.color(xyzs, dirs, **density_outputs)
@@ -403,6 +404,7 @@ class NeRFRenderer(nn.Module):
             if nears_force is not None:
                 nears = nears_force
 
+            depth_raw = depth.clone()
             depth = torch.clamp(depth - nears, min=0) / (fars - nears)
             dex_depth_raw = dex_depth.clone()
             dex_depth = torch.clamp(dex_depth - nears, min=0) / (fars - nears)
@@ -422,6 +424,7 @@ class NeRFRenderer(nn.Module):
 
         results['dex_depth'] = dex_depth
         results['dex_depth_raw'] = dex_depth_raw
+        results['nerf_depth_raw'] = depth_raw
         results['rgbs'] = rgbs
         results['sigmas'] = sigmas
         results['sigmas_raw'] = sigmas_raw

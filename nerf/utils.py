@@ -336,7 +336,7 @@ class Trainer(object):
                  use_loss_as_metric=True, # use loss as the first metric
                  report_metric_at_train=False, # also report metrics at training
                  use_checkpoint="latest", # which ckpt to use at init time
-                 use_tensorboardX=True, # whether to use tensorboard for logging
+                 use_tensorboardX=False, # whether to use tensorboard for logging
                  scheduler_update_every_step=False, # whether to call scheduler.step() after every train step
                  use_wandb=False,
                  bg_cktp = None,
@@ -607,7 +607,7 @@ class Trainer(object):
 
         return pred_rgb, gt_rgb, loss, None
 
-    def eval_step(self, data):
+    def eval_step(self, data,return_dex_raw=False,return_nerf_raw=False):
 
         rays_o = data['rays_o'] # [B, N, 3]
         rays_d = data['rays_d'] # [B, N, 3]
@@ -628,13 +628,20 @@ class Trainer(object):
 
         pred_rgb = outputs['image'].reshape(B, H, W, 3)
         pred_depth = outputs['depth'].reshape(B, H, W)
-
         loss = self.criterion(pred_rgb, gt_rgb).mean()
+        result = pred_rgb, pred_depth, gt_rgb, loss
+        
+        if return_dex_raw:
+            pred_dex_depth = outputs['dex_depth_raw'].reshape(B, H, W)
+            result += (pred_dex_depth,)
+        
+        if return_nerf_raw:
+            result += (outputs['nerf_depth_raw'].reshape(B, H, W),)
 
-        return pred_rgb, pred_depth, gt_rgb, loss
+        return result
 
     # moved out bg_color and perturb for more flexible control...
-    def test_step(self, data, bg_color=None, perturb=False,return_dex = False,D_thresh = None,return_mixnet=False,return_dex_raw=False):  
+    def test_step(self, data, bg_color=None, perturb=False,return_dex = False,D_thresh = None,return_mixnet=False,return_dex_raw=False,return_nerf_raw=False):  
 
         rays_o = data['rays_o'] # [B, N, 3]
         rays_d = data['rays_d'] # [B, N, 3]
@@ -659,6 +666,9 @@ class Trainer(object):
 
         if return_dex_raw:
             result += (outputs['dex_depth_raw'].reshape(-1, H, W),)
+
+        if return_nerf_raw:
+            result += (outputs['nerf_depth_raw'].reshape(-1, H, W),)
 
         return result
 
@@ -723,10 +733,13 @@ class Trainer(object):
         self.evaluate_one_epoch(loader, name)
         self.use_tensorboardX = use_tensorboardX
 
-    def test(self, loader, save_path=None, name=None, write_video=True):
+    def test(self, loader, save_path=None, name=None, write_video=True,savedir=None):
 
         if save_path is None:
             save_path = os.path.join(self.workspace, 'results')
+
+        if savedir is not None:
+            save_path = os.path.join(self.workspace,savedir)
 
         if name is None:
             name = f'{self.name}_ep{self.epoch:04d}'
@@ -738,19 +751,20 @@ class Trainer(object):
         pbar = tqdm.tqdm(total=len(loader) * loader.batch_size, bar_format='{percentage:3.0f}% {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]')
         self.model.eval()
 
-        if write_video:
-            all_preds = []
-            all_preds_depth = []
-            all_preds_dex_depth = []
-            all_preds_dex_raw = []
-            all_mix_preds = []
+        
+        all_preds = []
+        all_preds_depth = []
+        all_preds_dex_depth = []
+        all_preds_dex_raw = []
+        all_preds_depth_raw = []
+        all_mix_preds = []
 
         with torch.no_grad():
 
             for i, data in enumerate(loader):
                 
                 with torch.cuda.amp.autocast(enabled=self.fp16):
-                    preds, preds_depth, preds_dex_depth, mix_imgs, dex_raw = self.test_step(data,return_dex=True,D_thresh=self.opt.d_thresh,return_mixnet=True,return_dex_raw=True)
+                    preds, preds_depth, preds_dex_depth, mix_imgs, dex_raw, nerf_depth_raw = self.test_step(data,return_dex=True,D_thresh=self.opt.d_thresh,return_mixnet=True,return_dex_raw=True,return_nerf_raw=True)
 
                 if self.opt.color_space == 'linear':
                     preds = linear_to_srgb(preds)
@@ -771,6 +785,9 @@ class Trainer(object):
                 preds_dex_raw = dex_raw[0].detach().cpu().numpy()
                 all_preds_dex_raw.append(preds_dex_raw)
 
+                preds_nerf_raw = nerf_depth_raw[0].detach().cpu().numpy()
+                all_preds_depth_raw.append(preds_nerf_raw)
+
                 if write_video:
                     all_preds.append(pred)
                     all_preds_depth.append(pred_depth)
@@ -782,11 +799,14 @@ class Trainer(object):
                     cv2.imwrite(os.path.join(save_path, f'{name}_{i:04d}_depth.png'), pred_depth)
                     cv2.imwrite(os.path.join(save_path, f'{name}_{i:04d}_dex_depth.png'), preds_dex_depth)
 
+
                 
                 pbar.update(loader.batch_size)
         
         # saving depth as npy array
-        np.save(os.path.join(save_path, f'{name}_dex_depth.npy'),all_preds_dex_raw)
+        np.save(os.path.join(save_path, 'dex_depth.npy'),all_preds_dex_raw)
+        np.save(os.path.join(save_path, 'nerf_depth.npy'),all_preds_depth_raw)
+
 
         if write_video:
             all_preds = np.stack(all_preds, axis=0)
@@ -1074,12 +1094,24 @@ class Trainer(object):
         with torch.no_grad():
             self.local_step = 0
 
+            dex_depth_raw_all = None
+            nerf_depth_raw_all = None
             for data in loader:    
                 self.local_step += 1
 
                 with torch.cuda.amp.autocast(enabled=self.fp16):
-                    preds, preds_depth, truths, loss = self.eval_step(data)
+                    preds, preds_depth, truths, loss, dex_depth_raw, nerf_depth_raw = self.eval_step(data,return_dex_raw=True,return_nerf_raw=True)
 
+                    if dex_depth_raw_all is None:
+                        dex_depth_raw_all = dex_depth_raw.detach().cpu().numpy()
+                    else:
+                        dex_depth_raw_all = np.concatenate((dex_depth_raw_all,dex_depth_raw.detach().cpu().numpy()),axis=0)
+                    
+                    if nerf_depth_raw_all is None:
+                        nerf_depth_raw_all = nerf_depth_raw.detach().cpu().numpy()
+                    else:
+                        nerf_depth_raw_all = np.concatenate((nerf_depth_raw_all,nerf_depth_raw.detach().cpu().numpy()),axis=0)
+                    
                 # all_gather/reduce the statistics (NCCL only support all_*)
                 if self.world_size > 1:
                     dist.all_reduce(loss, op=dist.ReduceOp.SUM)
@@ -1128,6 +1160,8 @@ class Trainer(object):
                     pbar.set_description(f"loss={loss_val:.4f} ({total_loss/self.local_step:.4f})")
                     pbar.update(loader.batch_size)
 
+        np.save(os.path.join(self.workspace, 'validation', 'dex_depth.npy'),dex_depth_raw_all)
+        np.save(os.path.join(self.workspace, 'validation', 'nerf_depth.npy'),nerf_depth_raw_all)
 
         average_loss = total_loss / self.local_step
         self.stats["valid_loss"].append(average_loss)

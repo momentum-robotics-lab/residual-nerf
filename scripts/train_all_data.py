@@ -10,7 +10,7 @@ import shutil
 import math
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--n_gpus',type=int,default=1)
+parser.add_argument('--gpu_id',type=int,default=0)
 parser.add_argument('--data_location',type=str,default='data')
 parser.add_argument('--downscale',type=float,required=True)
 parser.add_argument('--out_folder',type=str,required=True)
@@ -24,7 +24,7 @@ def chunk_into_n(lst, n):
   )
   
 def run_batch(gpu_data_pairs):
-    process_idx = gpu_data_pairs[0]
+    process_idx = args.gpu_id
     data_folders = gpu_data_pairs[1]
     
     env = os.environ.copy()
@@ -32,7 +32,7 @@ def run_batch(gpu_data_pairs):
     for data_folder in data_folders:
         print('Running on {}'.format(data_folder))
         name = os.path.basename(os.path.normpath(data_folder))
-        process = subprocess.Popen('./run_scripts/generic_script.sh 1 10000 {} {} {} {}'.format(data_folder,name,args.downscale,args.out_folder),env=env,shell=True)
+        process = subprocess.Popen('./run_scripts/generic_script.sh {} 10000 {} {} {} {}'.format(args.gpu_id, data_folder,name,args.downscale,args.out_folder),env=env,shell=True)
         process.wait()
 
 
@@ -41,19 +41,19 @@ data_folders = glob.glob(os.path.join(data_location, '**'))
 # filter out non-dirs
 data_folders = [f for f in data_folders if os.path.isdir(f)]
 
-data_folders_chunked = chunk_into_n(data_folders,args.n_gpus)
-gpus = list(range(args.n_gpus))
+data_folders_chunked = chunk_into_n(data_folders,1)
+gpus = list(range(1))
 
 # form gpu and data folder pairs
 gpu_data_pairs = []
-for i in range(args.n_gpus):
+for i in range(1):
     gpu_data_pairs.append((gpus[i],data_folders_chunked[i]))    
 
 processes = []
 
 
 
-with Pool(args.n_gpus) as p:
+with Pool(1) as p:
     p.map(run_batch,gpu_data_pairs)
 
 

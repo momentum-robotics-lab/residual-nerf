@@ -77,7 +77,7 @@ if __name__ == '__main__':
     parser.add_argument('--mixnet_reg',default=0.0,type=float)
     parser.add_argument('--aabb_infer',default=None,type=float,nargs='*')
     parser.add_argument('--downscale',default=1.0,type=float)
-    parser.add_argument('--results_dir',default='results/sim',type=str)
+    parser.add_argument('--results_dir',default='results',type=str)
     opt = parser.parse_args()
 
 
@@ -181,11 +181,14 @@ if __name__ == '__main__':
         
         else:
             test_loader = NeRFDataset(opt, device=device, split='test',type=opt.type ,downscale=opt.downscale).dataloader()
-
+            valid_loader = NeRFDataset(opt, device=device, split='val', downscale=opt.downscale,type=opt.type).dataloader()
             # if test_loader.has_gt:
             #     trainer.evaluate(test_loader) # blender has gt, so evaluate it.
-    
+
+            # trainer.evaluate_one_epoch(valid_loader) # eval 
             trainer.test(test_loader, write_video=True) # test and save video
+            trainer.test(valid_loader, savedir='val')
+            
             
             trainer.save_mesh(resolution=256, threshold=10)
     

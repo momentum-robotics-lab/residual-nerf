@@ -395,5 +395,4 @@ class _composite_rays(Function):
         _backend.composite_rays(n_alive, n_step, T_thresh, D_thresh, rays_alive, rays_t, sigmas, rgbs,bg_sigmas, mixnet, deltas, weights_sum, depth, dex_depth, image, mixnet_image)
         return tuple()
 
-
 composite_rays = _composite_rays.apply
