@@ -14,7 +14,6 @@ parser.add_argument('--gpu_id',type=int,default=0)
 parser.add_argument('--data_location',type=str,default='data')
 parser.add_argument('--downscale',type=float,required=True)
 parser.add_argument('--out_folder',type=str,required=True)
-parser.add_argument('--alpha_reg',action='store_true')
 args = parser.parse_args()
 
 def chunk_into_n(lst, n):
@@ -23,12 +22,7 @@ def chunk_into_n(lst, n):
     map(lambda x: lst[x * size:x * size + size],
     list(range(n)))
   )
-
-if args.alpha_reg:
-    executable = './run_scripts/generic_script_alpha_reg.sh'
-else:
-    executable = './run_scripts/generic_script.sh'
-
+  
 def run_batch(gpu_data_pairs):
     process_idx = args.gpu_id
     data_folders = gpu_data_pairs[1]
@@ -38,7 +32,7 @@ def run_batch(gpu_data_pairs):
     for data_folder in data_folders:
         print('Running on {}'.format(data_folder))
         name = os.path.basename(os.path.normpath(data_folder))
-        process = subprocess.Popen('{} {} 10000 {} {} {} {}'.format(executable,args.gpu_id, data_folder,name,args.downscale,args.out_folder),env=env,shell=True)
+        process = subprocess.Popen('./run_scripts/generic_script_eval_real.sh {} 10000 {} {} {} {}'.format(args.gpu_id, data_folder,name,args.downscale,args.out_folder),env=env,shell=True)
         process.wait()
 
 

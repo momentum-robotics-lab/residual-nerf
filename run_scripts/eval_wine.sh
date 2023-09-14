@@ -10,10 +10,10 @@ else
     export CUDA_VISIBLE_DEVICES=$1
 fi
 
-export DATA_PATH=$3
-export WORKSPACE=$4
-export DOWNSCALE=$5
-export OUT_FOLDER=$6
+export DATA_PATH='data/real/wine/'
+export WORKSPACE='wine'
+export DOWNSCALE=4
+export OUT_FOLDER='results/real/'
 
 export BG_CHECKPOINT=$OUT_FOLDER'/'$WORKSPACE'_bg/checkpoints/'
 export ITERATIONS=30000
@@ -32,9 +32,11 @@ fi
 echo "Downscale: $DOWNSCALE"
 # run the normal version
 python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_normal' -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 3.0 --downscale $DOWNSCALE --min_near 0.2 --eval_interval 10  \
---results_dir $OUT_FOLDER --test --aabb_infer -0.3 0.3 -0.3 0.3 -0.3 0.3 
+--results_dir $OUT_FOLDER --aabb_infer -0.5 0.3 -0.5 0.5 -0.9 0.5 --test --gui --d_thresh 3.0
+# 
 
 
 # # run the residual nerf
+
 python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_res' --bg_ckpt $BG_CHECKPOINT -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 3.0 --downscale $DOWNSCALE --min_near 0.2 --mixnet_reg 0.00 --eval_interval 10 \
---results_dir $OUT_FOLDER --test --aabb_infer -0.3 0.3 -0.3 0.3 -0.3 0.3
+--results_dir $OUT_FOLDER --aabb_infer -0.5 0.3 -0.5 0.5 -0.9 0.5 --test --gui --d_thresh 3.0

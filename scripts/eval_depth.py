@@ -8,6 +8,8 @@ import cv2
 import pyroexr
 import glob
 import prettytable as pt
+import copy 
+import pandas as pd
 # some data (512x512)
 
 # map the normalized data to colors
@@ -19,13 +21,22 @@ parser.add_argument('--dir',type=str,default='depth_evaluation')
 parser.add_argument('--scale',type=float,default=0.33)
 parser.add_argument('--debug',action='store_true')
 parser.add_argument('--thresh',type=float,default=1.5)
+parser.add_argument('--crop',type=int,default=0)
 args = parser.parse_args()
 
 class Depth:
     def __init__(self,depth,gt,name=None):
         self.name=name[:-4]
-        self.viz_depth = depth[0]
-        self.infer_depth = depth.flatten()
+        
+
+        if args.crop > 0:
+            # crop from center
+            b, h,w = depth.shape
+            self.infer_depth = depth[:,h//2-args.crop:h//2+args.crop,w//2-args.crop:w//2+args.crop]
+            
+        self.viz_depth = self.infer_depth[0]
+
+        self.infer_depth = self.infer_depth.flatten()
         self.gt_depth = gt.flatten()
         self.mask = self.gt_depth < args.thresh 
         self.infer_depth = self.infer_depth[self.mask]
@@ -65,6 +76,12 @@ class Scene:
         print('Loading depths for scene: ', self.scene_dir)
         self.gt = np.load(self.gt_depth_file)
         self.gt = self.gt[:,:,:,0]
+        
+        if args.crop > 0:
+            b, h,w = self.gt.shape
+            self.gt = self.gt[:,h//2-args.crop:h//2+args.crop,w//2-args.crop:w//2+args.crop]
+
+
         for f in self.depths_files:
             # load depth
             depth = np.load(f)
@@ -102,26 +119,69 @@ scenes = [s for s in scenes if os.path.exists(os.path.join(s,'gt.npy'))]
 
 scenes = [Scene(s) for s in scenes]
 
+scene_objs = copy.deepcopy(scenes)
+del scenes
 # put rmse and mae into table 
 
-table = pt.PrettyTable()
 
 
-depth_names = ['dex','nerf','ours']
+
+depth_names = ['nerf','dex','ours']
 # 
 field_names = ['Scene']
+
+# scene names
+
+scenes_names = ['shelf','clutter','bowl','drink_flat','drink_up','needles_flat','needles_up','scissors_flat','scissors_up','wine_flat','wine_up']
+
+
+   
+table = pt.PrettyTable()
+table.field_names = ['Method'] + scenes_names
+df = pd.DataFrame(columns=['Method'] + scenes_names)
 for depth_name in depth_names:
-    field_names.append(depth_name + ' MAE')
-    field_names.append(depth_name + ' RMSE')
-    
+    row = [depth_name]
+    for scene_name in scenes_names:
+        found_scene = False
+        for scene_obj in scene_objs:
+            if scene_name in scene_obj.scene_dir:
+                for depth in scene_obj.depths:
+                    if depth_name in depth.name:
+                        row.append('{:.4f}'.format(depth.rmse))
+                        
+                        found_scene = True
+                        break
+        if not found_scene:
+            row.append('N/A')
 
-table.field_names = field_names
-for scene in scenes:
-    row = [scene.scene_dir]
-    for depth_name in depth_names:
-        depth = [d for d in scene.depths if d.name == depth_name][0]
-        row.append(depth.mae)
-        row.append(depth.rmse)
     table.add_row(row)
-
+    df.loc[len(df)] = row
+print("RMSE")
 print(table)
+print(df.to_latex(index=False))
+
+
+
+table = pt.PrettyTable()
+table.field_names = ['Method'] + scenes_names
+df = pd.DataFrame(columns=['Method'] + scenes_names)
+
+for depth_name in depth_names:
+    row = [depth_name]
+    for scene_name in scenes_names:
+        found_scene = False
+        for scene_obj in scene_objs:
+            if scene_name in scene_obj.scene_dir:
+                for depth in scene_obj.depths:
+                    if depth_name in depth.name:
+                        row.append('{:.4f}'.format(depth.mae))
+                        found_scene = True
+                        break
+        if not found_scene:
+            row.append('N/A')
+    table.add_row(row)
+    df.loc[len(df)] = row
+
+print("MAE")
+print(table)
+print(df.to_latex(index=False))

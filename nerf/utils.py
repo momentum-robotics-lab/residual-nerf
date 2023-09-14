@@ -708,16 +708,23 @@ class Trainer(object):
         # get a ref to error_map
         self.error_map = train_loader._data.error_map
         
+        # start timer
+        self.training_time = 0
+        # evaluate pre-training performance
+        
         for epoch in range(self.epoch + 1, max_epochs + 1):
             self.epoch = epoch
+            epoch_start_time = time.time()
             self.train_one_epoch(train_loader)
+            epoch_end_time = time.time()
+            self.training_time += (epoch_end_time - epoch_start_time)
             if self.workspace is not None and self.local_rank == 0:
                 self.save_checkpoint(full=True, best=False)
 
                 if self.combine_model is not None:
                     self.save_combined_checkpoint(self.combine_model,full=True,best=False)
 
-            if self.epoch % self.eval_interval == 0 or self.epoch == 0:
+            if self.epoch % self.eval_interval == 0 or self.epoch == 1:
                 self.evaluate_one_epoch(valid_loader)
                 self.save_checkpoint(full=False, best=True)
 
@@ -1154,14 +1161,13 @@ class Trainer(object):
                     pred_depth = preds_depth[0].detach().cpu().numpy()
                     pred_depth = (pred_depth * 255).astype(np.uint8)
                     
-                    cv2.imwrite(save_path, cv2.cvtColor(pred, cv2.COLOR_RGB2BGR))
-                    cv2.imwrite(save_path_depth, pred_depth)
+                    # cv2.imwrite(save_path, cv2.cvtColor(pred, cv2.COLOR_RGB2BGR))
+                    # cv2.imwrite(save_path_depth, pred_depth)
 
                     pbar.set_description(f"loss={loss_val:.4f} ({total_loss/self.local_step:.4f})")
                     pbar.update(loader.batch_size)
 
-        np.save(os.path.join(self.workspace, 'validation', 'dex_depth.npy'),dex_depth_raw_all)
-        np.save(os.path.join(self.workspace, 'validation', 'nerf_depth.npy'),nerf_depth_raw_all)
+        np.savez(os.path.join(self.workspace, 'validation', 'depth_{}.npz'.format(self.global_step)),dex_depth=dex_depth_raw_all,nerf_depth=nerf_depth_raw_all,rgb=pred,time=self.training_time)
 
         average_loss = total_loss / self.local_step
         self.stats["valid_loss"].append(average_loss)
@@ -1178,8 +1184,12 @@ class Trainer(object):
             if self.use_wandb:
                 psnr_tool = self.metrics[0]
                 psrn = psnr_tool.measure()
-                wandb.log({"val/psnr": psrn})
+                # wandb.log({"val/psnr_time": psrn},step=int(1000.0*self.training_time))
+                # briefly pause for 10 ms
+                wandb.log({"val/psnr": psrn},step=self.global_step)
 
+                # log psnr w.r.t. training time
+                
             for metric in self.metrics:
                 self.log(metric.report(), style="blue")
                 if self.use_tensorboardX:
