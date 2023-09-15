@@ -724,8 +724,9 @@ class Trainer(object):
                 if self.combine_model is not None:
                     self.save_combined_checkpoint(self.combine_model,full=True,best=False)
 
-            if self.epoch % self.eval_interval == 0 or self.epoch == 1:
-                self.evaluate_one_epoch(valid_loader)
+            if self.epoch % self.eval_interval == 0 or self.epoch == 1 or self.epoch == max_epochs:
+                self.evaluate_one_epoch(valid_loader) # evaluate for psnr 
+                self.test(valid_loader, savedir='val') # evaluate for depth saving
                 self.save_checkpoint(full=False, best=True)
 
         if self.combine_model is not None:
@@ -810,9 +811,7 @@ class Trainer(object):
                 
                 pbar.update(loader.batch_size)
         
-        # saving depth as npy array
-        np.save(os.path.join(save_path, 'dex_depth.npy'),all_preds_dex_raw)
-        np.save(os.path.join(save_path, 'nerf_depth.npy'),all_preds_depth_raw)
+        np.savez(os.path.join(self.workspace, 'validation', 'depth_{}.npz'.format(self.global_step)),dex_depth=all_preds_dex_raw,nerf_depth=all_preds_depth_raw,rgb=pred,time=self.training_time)
 
 
         if write_video:
@@ -1166,8 +1165,9 @@ class Trainer(object):
 
                     pbar.set_description(f"loss={loss_val:.4f} ({total_loss/self.local_step:.4f})")
                     pbar.update(loader.batch_size)
-
-        np.savez(os.path.join(self.workspace, 'validation', 'depth_{}.npz'.format(self.global_step)),dex_depth=dex_depth_raw_all,nerf_depth=nerf_depth_raw_all,rgb=pred,time=self.training_time)
+        
+        # if val:
+            # np.savez(os.path.join(self.workspace, 'validation', 'depth_{}.npz'.format(self.global_step)),dex_depth=dex_depth_raw_all,nerf_depth=nerf_depth_raw_all,rgb=pred,time=self.training_time)
 
         average_loss = total_loss / self.local_step
         self.stats["valid_loss"].append(average_loss)
