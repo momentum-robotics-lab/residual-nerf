@@ -32,7 +32,7 @@ fi
 echo "Downscale: $DOWNSCALE"
 # run the normal version
 python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_normal' -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 3.0 --downscale $DOWNSCALE --min_near 0.2 --eval_interval 10  \
---results_dir $OUT_FOLDER --aabb_infer -0.6 0.3 -0.6 0.6 -0.6 0.6 --test --gui
+--results_dir $OUT_FOLDER --d_thresh 3.0 --aabb_infer -0.6 0.3 -0.6 0.6 -0.6 0.6 --test --gui
 # 
 
 

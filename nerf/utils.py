@@ -369,7 +369,7 @@ class Trainer(object):
         self.console = Console()
         self.use_wandb = use_wandb
         self.combined_rounds = combined_rounds
-              
+        self.training_time = None
         
         model.to(self.device)
         if bg_model is not None:
@@ -724,10 +724,10 @@ class Trainer(object):
                 if self.combine_model is not None:
                     self.save_combined_checkpoint(self.combine_model,full=True,best=False)
 
-            if self.epoch % self.eval_interval == 0 or self.epoch == 1 or self.epoch == max_epochs:
-                self.evaluate_one_epoch(valid_loader) # evaluate for psnr 
-                self.test(valid_loader, savedir='val') # evaluate for depth saving
-                self.save_checkpoint(full=False, best=True)
+            # if self.epoch % self.eval_interval == 0 or self.epoch == 1 or self.epoch == max_epochs:
+            #     self.evaluate_one_epoch(valid_loader) # evaluate for psnr 
+            #     self.test(valid_loader, savedir='val') # evaluate for depth saving
+            #     self.save_checkpoint(full=False, best=True)
 
         if self.combine_model is not None:
             for epoch in range(self.combined_rounds):
@@ -811,8 +811,15 @@ class Trainer(object):
                 
                 pbar.update(loader.batch_size)
         
-        np.savez(os.path.join(self.workspace, 'validation', 'depth_{}.npz'.format(self.global_step)),dex_depth=all_preds_dex_raw,nerf_depth=all_preds_depth_raw,rgb=pred,time=self.training_time)
 
+        path = os.path.join(self.workspace, 'val', 'depth_{}.npz'.format(self.global_step))
+        if os.path.exists(path):
+            old_data = np.load(path)
+            old_time = old_data['time']
+            np.savez(path,dex_depth=all_preds_dex_raw,nerf_depth=all_preds_depth_raw,rgb=pred,time=old_time)
+        else:
+            if self.training_time is not None:
+                np.savez(path,dex_depth=all_preds_dex_raw,nerf_depth=all_preds_depth_raw,rgb=pred,time=self.training_time)
 
         if write_video:
             all_preds = np.stack(all_preds, axis=0)
@@ -936,7 +943,7 @@ class Trainer(object):
         with torch.no_grad():
             with torch.cuda.amp.autocast(enabled=self.fp16):
                 # here spp is used as perturb random seed! (but not perturb the first sample)
-                preds, preds_depth, preds_dex_depth, mixnets = self.test_step(data, bg_color=bg_color, perturb=False if spp == 1 else spp,return_dex=True,return_mixnet=True,D_thresh=D_thresh)
+                preds, preds_depth, preds_dex_depth, mixnets, dex_depth_raw = self.test_step(data, bg_color=bg_color, perturb=False if spp == 1 else spp,return_dex=True,return_mixnet=True,D_thresh=D_thresh,return_dex_raw=True)
 
         if self.ema is not None:
             self.ema.restore()
@@ -957,12 +964,14 @@ class Trainer(object):
         mixnet = mixnets[0].detach().cpu().numpy()
         pred_depth = preds_depth[0].detach().cpu().numpy()
         pred_dex_depth = preds_dex_depth[0].detach().cpu().numpy()
+        dex_depth_raw = dex_depth_raw[0].detach().cpu().numpy()
 
         outputs = {
             'image': pred,
             'depth': pred_depth,
             'dex_depth': pred_dex_depth,
             'mixnet_img': mixnet,
+            'dex_depth_raw': dex_depth_raw,
         }
 
         return outputs

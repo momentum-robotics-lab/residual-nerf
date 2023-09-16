@@ -21,7 +21,16 @@ parser.add_argument('-o',type=str,default='output_depth',help='output folder for
 parser.add_argument('--debug',action='store_true',help='debug mode')
 args = parser.parse_args()
 
-depths = np.load(args.i,allow_pickle=True)
+depths_data = np.load(args.i,allow_pickle=True)
+
+extension = args.i.split('.')[-1]
+
+if extension == 'npz':
+    depths = depths_data['dex_depth']
+elif extension == 'npy':
+    depths = depths_data
+    # H x W -> 1 x H x W
+    depths = np.expand_dims(depths,axis=0)
 
 depths_new = []
 
@@ -40,13 +49,10 @@ for i in range(len(depths)):
     depth = np.clip(depth,args.min,args.max)
     depth = (depth-args.min)/(args.max - args.min)
     
-    
     image = depth
     
-        
-
     plt.clf()
-    plt.imshow(image,cmap='magma')
+    plt.imshow(image,cmap='magma',vmin=args.min,vmax=args.max)
     
 
     # turn off outer axes

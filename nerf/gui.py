@@ -63,7 +63,8 @@ class NeRFGUI:
         self.training = False
         self.step = 0 # training step 
         self.dex_thresh = 0.0 
-        
+        self.outputs = None
+
         self.trainer = trainer
         self.train_loader = train_loader
         if train_loader is not None:
@@ -131,7 +132,7 @@ class NeRFGUI:
             starter.record()
 
             outputs = self.trainer.test_gui(self.cam.pose, self.cam.intrinsics, self.W, self.H, self.bg_color, self.spp, self.downscale,D_thresh=self.dex_thresh)
-
+            self.outputs = outputs
             ender.record()
             torch.cuda.synchronize()
             t = starter.elapsed_time(ender)
@@ -156,6 +157,8 @@ class NeRFGUI:
             dpg.set_value("_log_resolution", f'{int(self.downscale * self.W)}x{int(self.downscale * self.H)}')
             dpg.set_value("_log_spp", self.spp)
             dpg.set_value("_texture", self.render_buffer)
+
+            
 
         
     def register_dpg(self):
@@ -232,6 +235,8 @@ class NeRFGUI:
 
                         dpg.add_button(label="reset", tag="_button_reset", callback=callback_reset)
                         dpg.bind_item_theme("_button_reset", theme_button)
+
+                        
 
                     # save ckpt
                     with dpg.group(horizontal=True):
@@ -313,6 +318,14 @@ class NeRFGUI:
                     self.opt.dt_gamma = app_data
                     self.need_update = True
 
+                def callback_savedex(sender,appdata):
+                            print('saving dex')
+                            dex = self.outputs['dex_depth_raw']
+                            np.save('dex.npy',dex)
+                            # print(self.outputs['dex_depth'].shape)
+                        
+                dpg.add_button(label="save dex", tag="_button_savedex", callback=callback_savedex)
+                
                 dpg.add_slider_float(label="dt_gamma", min_value=0, max_value=0.1, format="%.5f", default_value=self.opt.dt_gamma, callback=callback_set_dt_gamma)
 
                 # max_steps slider

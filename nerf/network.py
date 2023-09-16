@@ -161,9 +161,9 @@ class NeRFNetwork(NeRFRenderer):
             # combine_param_bg = (1.0-combine_param_res)
 
             # use combine_param to weigh between bg and fg
-            raw_sigma_combined = h[...,0] * combine_param_res + bg_raw_sigma * combine_param_bg
+            # raw_sigma_combined = h[...,0] * combine_param_res + bg_raw_sigma * combine_param_bg
             
-            # raw_sigma_combined = h[..., 0] + bg_raw_sigma
+            raw_sigma_combined = h[..., 0] + bg_raw_sigma
             # raw_sigma_combined = h[...,0].clone()
             # raw_sigma_combined[sigma_mask] = bg_raw_sigma[sigma_mask]
             # h = bg_raw_sigma
@@ -197,12 +197,12 @@ class NeRFNetwork(NeRFRenderer):
         
         
         if bg_raw_color is not None:
-            combine_param_res_expanded = torch.stack([combine_param_res,combine_param_res,combine_param_res],dim=-1)
-            combine_param_bg_expanded = torch.stack([combine_param_bg,combine_param_bg,combine_param_bg],dim=-1)
-            rgb_raw = h * combine_param_res_expanded + bg_raw_color * combine_param_bg_expanded
+            # combine_param_res_expanded = torch.stack([combine_param_res,combine_param_res,combine_param_res],dim=-1)
+            # combine_param_bg_expanded = torch.stack([combine_param_bg,combine_param_bg,combine_param_bg],dim=-1)
+            # rgb_raw = h * combine_param_res_expanded + bg_raw_color * combine_param_bg_expanded
             # rgb_raw = h.clone()
             # rgb_raw[sigma_mask] = bg_raw_color[sigma_mask]
-            # rgb_raw = h + bg_raw_color
+            rgb_raw = h + bg_raw_color
         else:
             rgb_raw = h
             # h: [N, 3]

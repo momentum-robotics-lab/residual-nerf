@@ -892,9 +892,9 @@ __global__ void kernel_composite_rays(
         // g_mix += weight * (mixnet[0]) ;
         // b_mix = 0.0f;
 
-        r_mix += (1.0f-mixnet[0]) * weight ;
-        g_mix += mixnet[0] * weight;
-        b_mix += 0.0f;
+        // r_mix += (1.0f-mixnet[0]) * weight ;
+        // g_mix += mixnet[0] * weight;
+        // b_mix += 0.0f;
 
         // r_mix += mixnet[0] * weight;
         // g_mix += mixnet[0] * weight;
@@ -909,6 +909,21 @@ __global__ void kernel_composite_rays(
             // r_mix = 1.0f - mixnet[0];
             // g_mix = mixnet[0];
             // b_mix = 0.0f;
+            if (mixnet[0] < 0.3f) {
+                r_mix = 0.0f;
+                g_mix = 0.0f;
+                b_mix = 0.0f;
+            } else if (mixnet[0] < 0.5f) {
+                r_mix = (mixnet[0]-0.3f) * 5.0f;
+                g_mix = (mixnet[0]-0.3f) * 5.0f;
+                b_mix = (mixnet[0]-0.3f) * 5.0f;
+            } else {
+                r_mix = 1.0f;
+                g_mix = 1.0f;
+                b_mix = 1.0f;
+            }
+
+            
         }
 
         // minimal remained transmittence
