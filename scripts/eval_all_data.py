@@ -14,6 +14,7 @@ parser.add_argument('--gpu_id',type=int,default=0)
 parser.add_argument('--data_location',type=str,default='data')
 parser.add_argument('--downscale',type=float,required=True)
 parser.add_argument('--out_folder',type=str,required=True)
+parser.add_argument('--gui_pose',type=str,default=None)
 args = parser.parse_args()
 
 def chunk_into_n(lst, n):
@@ -32,7 +33,10 @@ def run_batch(gpu_data_pairs):
     for data_folder in data_folders:
         print('Running on {}'.format(data_folder))
         name = os.path.basename(os.path.normpath(data_folder))
-        process = subprocess.Popen('./run_scripts/generic_script_eval.sh {} 10000 {} {} {} {}'.format(args.gpu_id, data_folder,name,args.downscale,args.out_folder),env=env,shell=True)
+        if args.gui_pose is None:
+          process = subprocess.Popen('./run_scripts/generic_script_eval.sh {} 10000 {} {} {} {}'.format(args.gpu_id, data_folder,name,args.downscale,args.out_folder),env=env,shell=True)
+        else:
+           process = subprocess.Popen('./run_scripts/generic_script_eval.sh {} 10000 {} {} {} {} {}'.format(args.gpu_id, data_folder,name,args.downscale,args.out_folder,args.gui_pose),env=env,shell=True)
         process.wait()
 
 

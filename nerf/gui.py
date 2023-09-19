@@ -30,7 +30,8 @@ class OrbitCamera:
         # translate
         res[:3, 3] -= self.center
         return res
-    
+
+   
     # intrinsics
     @property
     def intrinsics(self):
@@ -64,6 +65,8 @@ class NeRFGUI:
         self.step = 0 # training step 
         self.dex_thresh = 0.0 
         self.outputs = None
+        self.forced_pose = None
+        self.gui_pose = opt.gui_pose
 
         self.trainer = trainer
         self.train_loader = train_loader
@@ -130,8 +133,11 @@ class NeRFGUI:
         
             starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
             starter.record()
-
-            outputs = self.trainer.test_gui(self.cam.pose, self.cam.intrinsics, self.W, self.H, self.bg_color, self.spp, self.downscale,D_thresh=self.dex_thresh)
+            if self.forced_pose is None:
+                outputs = self.trainer.test_gui(self.cam.pose, self.cam.intrinsics, self.W, self.H, self.bg_color, self.spp, self.downscale,D_thresh=self.dex_thresh)
+            else:
+                outputs = self.trainer.test_gui(self.forced_pose, self.cam.intrinsics, self.W, self.H, self.bg_color, self.spp, self.downscale,D_thresh=self.dex_thresh)
+            
             self.outputs = outputs
             ender.record()
             torch.cuda.synchronize()
@@ -325,7 +331,31 @@ class NeRFGUI:
                             # print(self.outputs['dex_depth'].shape)
                         
                 dpg.add_button(label="save dex", tag="_button_savedex", callback=callback_savedex)
+
+                def callback_savepose(sender,appdata):
+                    print('saving pose')
+                    pose = self.cam.pose
+                    np.save('pose.npy',pose)
+                    # print(self.outputs['dex_depth'].shape)
+                dpg.add_button(label="save pose", tag="_button_savepose", callback=callback_savepose)
                 
+                def callback_setpose(sender,appdata):
+                    if self.gui_pose is not None:
+                        # check if gui pose file exists
+                        if not os.path.exists(self.gui_pose):
+                            print('pose file does not exist')
+                        else:
+                            self.forced_pose = np.load(self.gui_pose)
+                            self.need_update = True
+                            print('set pose')
+                            print(self.forced_pose)
+                    else:
+                        print('no pose provided')
+                    
+                    # print(self.outputs['dex_depth'].shape)
+                dpg.add_button(label="set pose", tag="_button_setpose", callback=callback_setpose)
+
+
                 dpg.add_slider_float(label="dt_gamma", min_value=0, max_value=0.1, format="%.5f", default_value=self.opt.dt_gamma, callback=callback_set_dt_gamma)
 
                 # max_steps slider

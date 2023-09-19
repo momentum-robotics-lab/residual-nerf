@@ -19,6 +19,7 @@ if args.crop > 0:
     depths_data = depths_data[h_start:h_start+args.crop,w_start:w_start+args.crop]
 
 depths_data *= (1.0/args.scale)
+print(depths_data.min(),depths_data.max(),depths_data.mean())
 plt.imshow(depths_data)
 plt.show()
 

@@ -78,6 +78,8 @@ if __name__ == '__main__':
     parser.add_argument('--aabb_infer',default=None,type=float,nargs='*')
     parser.add_argument('--downscale',default=1.0,type=float)
     parser.add_argument('--results_dir',default='results',type=str)
+    parser.add_argument('--gui_pose',default='pose.npy',type=str)
+    parser.add_argument('--n_imgs',default=None,type=int,help='number of images to use for training')
     opt = parser.parse_args()
 
 
@@ -216,6 +218,7 @@ if __name__ == '__main__':
             gui.render()
         
         else:
+            ## DEBUG ONLY
             valid_loader = NeRFDataset(opt, device=device, split='val', downscale=opt.downscale,type=opt.type).dataloader()
             test_loader = NeRFDataset(opt, device=device, split='test',type=opt.type,downscale=opt.downscale).dataloader()
 

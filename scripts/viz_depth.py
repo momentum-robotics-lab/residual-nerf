@@ -27,10 +27,19 @@ extension = args.i.split('.')[-1]
 
 if extension == 'npz':
     depths = depths_data['dex_depth']
+    rgb_0 = depths_data['rgb'] # H x W x 3
+
+    # save 
+    imageio.imwrite('rgb_0.png',rgb_0)
 elif extension == 'npy':
     depths = depths_data
+
     # H x W -> 1 x H x W
-    depths = np.expand_dims(depths,axis=0)
+    if len(depths.shape) == 2:
+        depths = np.expand_dims(depths,axis=0)
+
+    plt.imshow(depths[0],cmap='magma')
+    plt.show()
 
 depths_new = []
 
@@ -43,9 +52,9 @@ for i in range(len(depths)):
 
     depth = depths[i]
     if args.debug:
-        plt.imshow(depth,cmap='magma')
+        plt.imshow(depth,cmap='magma', vmin=args.min,vmax=args.max)
         plt.show()
-        exit()
+
     depth = np.clip(depth,args.min,args.max)
     depth = (depth-args.min)/(args.max - args.min)
     

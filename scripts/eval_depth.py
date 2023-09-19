@@ -17,14 +17,14 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 
 # map the normalized data to colors
 # image is now RGBA (512x512x4) 
-depth_names = ['nerf','dex','ours']
+depth_names = ['trans','nerf','dex','ours']
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dir',type=str,default='depth_evaluation')
 parser.add_argument('--scale',type=float,default=0.33)
 parser.add_argument('--debug',action='store_true')
 parser.add_argument('--thresh',type=float,default=1.5)
-parser.add_argument('--crop',type=int,default=0)
+parser.add_argument('--crop',type=int,default=150)
 parser.add_argument('--min',type=float,default=1.0)
 parser.add_argument('--max',type=float,default=1.2)
 args = parser.parse_args()
@@ -74,6 +74,60 @@ class Depth_time:
         mae = np.mean(np.abs(self.gt_depth - self.infer_depth))
         return mae
 
+
+class DummyTransDepth:
+    def __init__(self,rmse,mae,viz_depth):
+        self.epoch = 0
+        self.time = 0 
+        self.rmse = rmse
+        self.mae = mae
+        self.viz_depth = viz_depth
+
+class TransDepth:
+    def __init__(self,npy_dir,gt,name='trans'):
+        self.name = name
+        self.npy_files = glob.glob(os.path.join(npy_dir,'*.npy'))
+        self.infer_depth = np.load(self.npy_files[0])
+
+        self.gt_depth = gt
+        
+        self.infer_depth *= (1.0/args.scale)
+        # print the attributes of the data
+        if args.crop > 0:
+            # crop from center
+            b, h,w = self.infer_depth.shape
+            self.infer_depth = self.infer_depth[:,h//2-args.crop:h//2+args.crop,w//2-args.crop:w//2+args.crop]
+            
+            b, h, w = self.gt_depth.shape
+            self.gt_depth = self.gt_depth[:,h//2-args.crop:h//2+args.crop,w//2-args.crop:w//2+args.crop]
+        
+        self.gt_depth_viz = copy.deepcopy(self.gt_depth[0])
+
+        self.viz_depth = self.infer_depth[0]
+
+        self.infer_depth = self.infer_depth.flatten()
+        self.gt_depth = gt.flatten()
+        self.mask = self.gt_depth < args.thresh 
+        self.infer_depth = self.infer_depth[self.mask]
+        self.gt_depth = self.gt_depth[self.mask]
+        self.rmse = self.rmse()
+        self.mae = self.mae()
+        self.depths_epoch = [DummyTransDepth(self.rmse,self.mae,self.viz_depth)]
+
+
+    def rmse(self,dex=True):
+        # remove values off the table
+        rmse = np.sqrt(np.mean((self.gt_depth - self.infer_depth)**2))
+
+        return rmse
+
+    def mae(self):
+        mae = np.mean(np.abs(self.gt_depth - self.infer_depth))
+        return mae
+
+
+
+
 class Depth:
     def __init__(self,dir,gt,name=None,dex=False):
         self.name=name 
@@ -91,6 +145,7 @@ class Depth:
             name = os.path.basename(depth_file)
             # get the digit part of it
             epoch = int(''.join(filter(str.isdigit, name)))
+
             self.depths_epoch.append(Depth_time(depth_file,self.gt,epoch,dex))
             
 
@@ -110,7 +165,7 @@ class Scene:
         self.depth_dirs = glob.glob(os.path.join(scene_dir,'*'))
         self.depth_dirs = [d for d in self.depth_dirs if os.path.isdir(d)]
         # filter out dirs without npz files
-        self.depth_dirs = [d for d in self.depth_dirs if len(glob.glob(os.path.join(d,'*.npz'))) > 0]
+        self.depth_dirs = [d for d in self.depth_dirs if len(glob.glob(os.path.join(d,'*.npz'))) > 0 or len(glob.glob(os.path.join(d,'*.npy'))) > 0 ]
 
         self.gt_depth_file = os.path.join(scene_dir,'gt.npy')
         self.n_depths = None
@@ -138,9 +193,13 @@ class Scene:
                 self.depth_names.append('dex')
                 self.depths.append(Depth(depth_dir,self.gt,name='nerf',dex=False))
                 self.depth_names.append('nerf')
+            elif 'trans' in depth_dir:
+                self.depths.append(TransDepth(depth_dir,self.gt))
+                self.depth_names.append('trans')
             else:
                 self.depths.append(Depth(depth_dir,self.gt,name=os.path.basename(depth_dir),dex=True))
                 self.depth_names.append(os.path.basename(depth_dir))
+
         self.n_depths = len(self.depths)
         self.save_depth_imgs()
         self.gen_plots()
@@ -154,7 +213,7 @@ class Scene:
         elif name == 'ours':
             return 'Residual-NeRF'
         else:
-            return 'Unknown'
+            return None
 
     def gen_plots(self):
         # setup plot 
@@ -169,7 +228,9 @@ class Scene:
         plt.xlim(0,10000) # 10k steps
          # rmse over time 
         for i in range(self.n_depths):
-            plt.plot([d.epoch for d in self.depths[i].depths_epoch],[d.rmse for d in self.depths[i].depths_epoch],label=self.label_name(self.depth_names[i]))
+            label = self.label_name(self.depth_names[i])
+            if label is not None:
+                plt.plot([d.epoch for d in self.depths[i].depths_epoch],[d.rmse for d in self.depths[i].depths_epoch],label=label)
         
         # plt.legend(fontsize=fontsize)
         # legend on top of figure horizontally centered
@@ -187,7 +248,9 @@ class Scene:
 
         # mae over time
         for i in range(self.n_depths):
-            plt.plot([d.epoch for d in self.depths[i].depths_epoch],[d.mae for d in self.depths[i].depths_epoch],label=self.label_name(self.depth_names[i]))
+            label = self.label_name(self.depth_names[i])
+            if label is not None:
+                plt.plot([d.epoch for d in self.depths[i].depths_epoch],[d.mae for d in self.depths[i].depths_epoch],label=label)
         plt.legend(fontsize=fontsize,loc='upper center', bbox_to_anchor=(0.5, 1.5),ncol=3)
         plt.grid()
         plt.xlabel('Epoch',fontsize=fontsize)
@@ -201,7 +264,9 @@ class Scene:
         plt.yticks(fontsize=fontsize)
 
         for i in range(self.n_depths):
-            plt.plot([d.time for d in self.depths[i].depths_epoch],[d.rmse for d in self.depths[i].depths_epoch],label=self.label_name(self.depth_names[i]))
+            label = self.label_name(self.depth_names[i])
+            if label is not None:
+                plt.plot([d.time for d in self.depths[i].depths_epoch],[d.rmse for d in self.depths[i].depths_epoch],label=label)
         plt.legend(fontsize=fontsize,loc='upper center', bbox_to_anchor=(0.5, 1.5),ncol=3)
         plt.grid()
         plt.xlabel('Time [s]',fontsize=fontsize)
@@ -215,7 +280,9 @@ class Scene:
         plt.yticks(fontsize=fontsize)
         # mae over time
         for i in range(self.n_depths):
-            plt.plot([d.time for d in self.depths[i].depths_epoch],[d.mae for d in self.depths[i].depths_epoch],label=self.label_name(self.depth_names[i]))
+            label = self.label_name(self.depth_names[i])
+            if label is not None:
+                plt.plot([d.time for d in self.depths[i].depths_epoch],[d.mae for d in self.depths[i].depths_epoch],label=label)
         plt.legend(fontsize=fontsize,loc='upper center', bbox_to_anchor=(0.5, 1.5),ncol=3)
         plt.grid()
         plt.xlabel('Time [s]',fontsize=fontsize)

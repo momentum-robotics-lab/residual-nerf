@@ -92,7 +92,7 @@ def rand_poses(size, device, radius=1, theta_range=[np.pi/3, 2*np.pi/3], phi_ran
 
 
 class NeRFDataset:
-    def __init__(self, opt, device, split='train', downscale=1, n_test=10,type='all'):
+    def __init__(self, opt, device, split='train', downscale=1, n_test=10,type='all',n_val=10):
         super().__init__()
         
         self.opt = opt
@@ -106,6 +106,9 @@ class NeRFDataset:
         self.bound = opt.bound # bounding box half length, also used as the radius to random sample poses.
         self.fp16 = opt.fp16 # if preload, load into fp16.
         self.type = type 
+        self.n_imgs = opt.n_imgs # only use this number of imgs
+        self.idx = None
+        
 
         self.training = self.split in ['train', 'all', 'trainval']
         self.num_rays = self.opt.num_rays if self.training else -1
@@ -189,9 +192,9 @@ class NeRFDataset:
             # for colmap, manually split a valid set (the first frame).
             if self.mode == 'colmap':
                 if split == 'train':
-                    frames = frames[10:]
+                    frames = frames[n_val:]
                 elif split == 'val':
-                    frames = frames[:10]
+                    frames = frames[:n_val]
                 # else 'all' or 'trainval' : use all frames
             
             self.poses = []
@@ -234,8 +237,18 @@ class NeRFDataset:
                 elif self.type == f['type']:
                     self.poses.append(pose)
                     self.images.append(image)
-        
-        
+            
+            if self.n_imgs is not None and split == 'train':
+                # select n_imgs randomly
+                self.idx = np.random.choice(len(self.images), self.n_imgs, replace=False)
+                print(self.idx)
+                self.images = np.array(self.images)[self.idx]
+            
+        if self.n_imgs is not None and split == 'train':
+            # select n_imgs randomly
+            self.idx = np.random.choice(len(self.poses), self.n_imgs, replace=False)
+            self.poses = np.array(self.poses)[self.idx]
+
         self.poses = torch.from_numpy(np.stack(self.poses, axis=0)) # [N, 4, 4]
         if self.images is not None:
             self.images = torch.from_numpy(np.stack(self.images, axis=0)) # [N, H, W, C]

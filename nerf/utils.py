@@ -819,6 +819,9 @@ class Trainer(object):
             np.savez(path,dex_depth=all_preds_dex_raw,nerf_depth=all_preds_depth_raw,rgb=pred,time=old_time)
         else:
             if self.training_time is not None:
+                # check if folder exists 
+                if not os.path.exists(os.path.join(self.workspace, 'val')):
+                    os.makedirs(os.path.join(self.workspace, 'val'))
                 np.savez(path,dex_depth=all_preds_dex_raw,nerf_depth=all_preds_depth_raw,rgb=pred,time=self.training_time)
 
         if write_video:
