@@ -1,8 +1,8 @@
 import glob 
 import os
 
-dataset_dir = 'real_dataset' 
-results_dir = 'colmap_results_new'
+dataset_dir = 'robot_data_2' 
+results_dir = 'colmap_results_robot'
 
 if os.path.exists(results_dir):
     print('Results directory already exists')
@@ -35,5 +35,5 @@ for folder in folders:
     json_file = 'transforms.json'
 
     # Run colmap on the folder
-    os.system('python3 scripts/colmap_prep.py --images_bg {} --images_wrap {} --images {} --out {}'.format(background_folder,folder,image_dir,json_file))
-
+    os.system('python3 scripts/colmap_prep.py --images_bg {} --images_wrap {} --images {} --out {} --keep_colmap_coords'.format(background_folder,folder,image_dir,json_file))
+    os.system('mv colmap_text colmap_text_{}'.format(name))
