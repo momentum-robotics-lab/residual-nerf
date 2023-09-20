@@ -24,6 +24,7 @@ def nerf_matrix_to_ngp(pose, scale=0.33, offset=[0, 0, 0]):
         [pose[0, 0], -pose[0, 1], -pose[0, 2], pose[0, 3] * scale + offset[2]],
         [0, 0, 0, 1],
     ], dtype=np.float32)
+
     return new_pose
 
 
@@ -238,18 +239,18 @@ class NeRFDataset:
                     self.poses.append(pose)
                     self.images.append(image)
             
-            if self.n_imgs is not None:
-                # select n_imgs randomly
-                # self.idx = np.random.choice(len(self.images), self.n_imgs, replace=False)
-                # print(self.idx)
-                # self.images = np.array(self.images)[self.idx]
-                self.images = self.images[::2]
+            # if self.n_imgs is not None:
+            #     # select n_imgs randomly
+            #     # self.idx = np.random.choice(len(self.images), self.n_imgs, replace=False)
+            #     # print(self.idx)
+            #     # self.images = np.array(self.images)[self.idx]
+            #     self.images = self.images[::2]
             
-        if self.n_imgs is not None:
-            # select n_imgs randomly
-            # self.idx = np.random.choice(len(self.poses), self.n_imgs, replace=False)
-            # self.poses = np.array(self.poses)[self.idx]
-            self.poses = self.poses[::2]
+        # if self.n_imgs is not None:
+        #     # select n_imgs randomly
+        #     # self.idx = np.random.choice(len(self.poses), self.n_imgs, replace=False)
+        #     # self.poses = np.array(self.poses)[self.idx]
+        #     self.poses = self.poses[::2]
 
         self.poses = torch.from_numpy(np.stack(self.poses, axis=0)) # [N, 4, 4]
         if self.images is not None:

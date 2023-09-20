@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import dearpygui.dearpygui as dpg
 from scipy.spatial.transform import Rotation as R
+import time 
 
 from .utils import *
 
@@ -66,6 +67,7 @@ class NeRFGUI:
         self.dex_thresh = 0.0 
         self.outputs = None
         self.forced_pose = None
+        self.forced_time = None
         self.gui_pose = opt.gui_pose
 
         self.trainer = trainer
@@ -137,6 +139,13 @@ class NeRFGUI:
                 outputs = self.trainer.test_gui(self.cam.pose, self.cam.intrinsics, self.W, self.H, self.bg_color, self.spp, self.downscale,D_thresh=self.dex_thresh)
             else:
                 outputs = self.trainer.test_gui(self.forced_pose, self.cam.intrinsics, self.W, self.H, self.bg_color, self.spp, self.downscale,D_thresh=self.dex_thresh)
+                elapsed_time = time.time() - self.forced_time
+                # if elapsed_time > 10.0:
+                #     self.forced_pose = None
+                #     self.need_update = True
+                #     self.forced_time = None
+                #     print('pose reset')
+
             self.outputs = outputs
             ender.record()
             torch.cuda.synchronize()
@@ -347,7 +356,9 @@ class NeRFGUI:
                         else:
                             self.forced_pose = np.load(self.gui_pose)
                             self.need_update = True
-                            
+                            self.forced_time = time.time()
+                                
+                               
                     else:
                         print('no pose provided')
                     

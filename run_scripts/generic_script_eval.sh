@@ -31,13 +31,13 @@ fi
 
 echo "Downscale: $DOWNSCALE"
 # run the normal version
-python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_normal' -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 3.0 --downscale $DOWNSCALE --min_near 0.2 --eval_interval 10  \
---results_dir $OUT_FOLDER --test --gui 
-# --aabb_infer 0.0 1.4  0.0 1.4 0.0 0.6
+python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_normal' -O --dt_gamma 0 --scale 2.0 --bound 4  --iters $ITERATIONS --type wrap --d_thresh 3.0 --downscale $DOWNSCALE --min_near 0.2 --eval_interval 10  \
+--results_dir $OUT_FOLDER --test --gui --aabb_infer  -0.9 0.8 -0.7 2.3 -1 1.2
+# 
 
 
 # # # run the residual nerf
-python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_res' --bg_ckpt $BG_CHECKPOINT -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 3.0 --downscale $DOWNSCALE --min_near 0.2 --mixnet_reg 0.00 --eval_interval 10 \
---results_dir $OUT_FOLDER --test --gui
+python3 main_nerf.py $DATA_PATH --workspace $WORKSPACE'_res' --bg_ckpt $BG_CHECKPOINT  --scale 2.0 --bound 4 -O --dt_gamma 0  --iters $ITERATIONS --type wrap --d_thresh 3.0 --downscale $DOWNSCALE --min_near 0.2 --mixnet_reg 0.00 --eval_interval 10 \
+--results_dir $OUT_FOLDER --test --gui --aabb_infer  -0.9 1.1 -0.7 2.3 -1 1.2
 # --gui --aabb_infer 0.0 1.4  0.0 1.4 0.0 0.6
 # # # --aabb_infer
