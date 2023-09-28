@@ -80,6 +80,7 @@ if __name__ == '__main__':
     parser.add_argument('--results_dir',default='results',type=str)
     parser.add_argument('--gui_pose',default='pose.npy',type=str)
     parser.add_argument('--n_imgs',default=None,type=int,help='number of images to use for training')
+    parser.add_argument('--max_training_time',default=None,type=float)
     opt = parser.parse_args()
 
 

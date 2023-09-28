@@ -23,14 +23,16 @@ def R_z(theta):
 
 visualizer = CameraPoseVisualizer([-1, 1], [-1, 1], [-0, 1])
 scale = 2.0 # ngp environment w.r.t. real
-goal_position = np.array([0.20, 0.73025*0.5,0.80]) # these numbers (except scale) are what we want in the real world
+goal_position = np.array([0.17, 0.73025*0.5,0.80]) # these numbers (except scale) are what we want in the real world
 
 P = np.eye(4)
 P[0, 3] = goal_position[0]
 P[1, 3] = goal_position[1]
 P[2, 3] = goal_position[2]
+print(P)
 P[:3, :3] = R_z(np.pi/2)
 print(P)
+np.save('normal_pose.npy',P)
 print(nerf_matrix_to_ngp(P,scale=scale))
 
 # hardcoded_mat = np.load('pose.npy')

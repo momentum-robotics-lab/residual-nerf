@@ -724,6 +724,10 @@ class Trainer(object):
                 if self.combine_model is not None:
                     self.save_combined_checkpoint(self.combine_model,full=True,best=False)
 
+            if opt.max_training_time is not None:
+                if self.training_time > opt.max_training_time:
+                    print(f"Training time exceeded {opt.max_training_time} seconds, stopping training.")
+                    break
             # if self.epoch % self.eval_interval == 0 or self.epoch == 1 or self.epoch == max_epochs:
             #     self.evaluate_one_epoch(valid_loader) # evaluate for psnr 
             #     self.test(valid_loader, savedir='val') # evaluate for depth saving
@@ -807,10 +811,10 @@ class Trainer(object):
                     cv2.imwrite(os.path.join(save_path, f'{name}_{i:04d}_depth.png'), pred_depth)
                     cv2.imwrite(os.path.join(save_path, f'{name}_{i:04d}_dex_depth.png'), preds_dex_depth)
 
-
-                
+                       
                 pbar.update(loader.batch_size)
         
+        np.savez(os.path.join(save_path, 'dex.npz'),dex_depth=all_preds_dex_raw,nerf_depth=all_preds_depth_raw,rgb=pred)
 
         path = os.path.join(self.workspace, 'val', 'depth_{}.npz'.format(self.global_step))
         if os.path.exists(path):

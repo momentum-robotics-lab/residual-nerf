@@ -10,7 +10,7 @@ parser.add_argument('-o',type=str,default='output_depth.npy',help='output folder
 args = parser.parse_args()
 
 depths_data = np.load(args.i)
-
+print(depths_data.shape)
 # crop from center
 if args.crop > 0:
     h,w = depths_data.shape
