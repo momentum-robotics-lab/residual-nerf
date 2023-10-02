@@ -71,6 +71,7 @@ class Processor:
         self.frames_in = self.poses['frames']
         self.frames_out = self.json_out['frames']
         self.n_frames = len(self.frames_in)
+        print('n_frames: ',self.n_frames)
 
     def compute_goal_plane(self):
         # cross product of x and y

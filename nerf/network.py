@@ -12,12 +12,12 @@ class NeRFNetwork(NeRFRenderer):
                  encoding="hashgrid",
                  encoding_dir="sphere_harmonics",
                  encoding_bg="hashgrid",
-                 num_layers=2,
+                 num_layers=8,
                  num_combine_layers=4,
-                 hidden_dim=64,
+                 hidden_dim=256,
                  geo_feat_dim=15,
-                 num_layers_color=3,
-                 hidden_dim_color=64,
+                 num_layers_color=8,
+                 hidden_dim_color=256,
                  num_layers_bg=2,
                  hidden_dim_bg=64,
                  bound=1,
@@ -30,6 +30,7 @@ class NeRFNetwork(NeRFRenderer):
         self.num_layers = num_layers
         self.hidden_dim = hidden_dim
         self.geo_feat_dim = geo_feat_dim
+        self.encoding  = encoding
         self.encoder, self.in_dim = get_encoder(encoding, desired_resolution=2048 * bound)
 
         sigma_net = []
@@ -301,11 +302,13 @@ class NeRFNetwork(NeRFRenderer):
     def get_params(self, lr):
 
         params = [
-            {'params': self.encoder.parameters(), 'lr': lr},
             {'params': self.sigma_net.parameters(), 'lr': lr},
             {'params': self.encoder_dir.parameters(), 'lr': lr},
             {'params': self.color_net.parameters(), 'lr': lr}, 
         ]
+        if self.encoding != 'None' and self.encoding != 'frequency':
+            params.append({'params': self.encoder.parameters(), 'lr': lr})
+            
         if self.bg_radius > 0:
             params.append({'params': self.encoder_bg.parameters(), 'lr': lr})
             params.append({'params': self.bg_net.parameters(), 'lr': lr})

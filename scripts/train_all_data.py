@@ -38,7 +38,7 @@ def run_batch(gpu_data_pairs):
     for data_folder in data_folders:
         print('Running on {}'.format(data_folder))
         name = os.path.basename(os.path.normpath(data_folder))
-        process = subprocess.Popen('{} {} 10000 {} {} {} {}'.format(executable,args.gpu_id, data_folder,name,args.downscale,args.out_folder),env=env,shell=True)
+        process = subprocess.Popen('{} {} 300000 {} {} {} {}'.format(executable,args.gpu_id, data_folder,name,args.downscale,args.out_folder),env=env,shell=True)
         process.wait()
 
 
