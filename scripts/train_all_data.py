@@ -15,6 +15,7 @@ parser.add_argument('--data_location',type=str,default='data')
 parser.add_argument('--downscale',type=float,required=True)
 parser.add_argument('--out_folder',type=str,required=True)
 parser.add_argument('--alpha_reg',action='store_true')
+parser.add_argument('--views',type=int,default=-1)
 args = parser.parse_args()
 
 def chunk_into_n(lst, n):
@@ -38,7 +39,7 @@ def run_batch(gpu_data_pairs):
     for data_folder in data_folders:
         print('Running on {}'.format(data_folder))
         name = os.path.basename(os.path.normpath(data_folder))
-        process = subprocess.Popen('{} {} 10000 {} {} {} {}'.format(executable,args.gpu_id, data_folder,name,args.downscale,args.out_folder),env=env,shell=True)
+        process = subprocess.Popen('{} {} 10000 {} {} {} {} {}'.format(executable,args.gpu_id, data_folder,name,args.downscale,args.out_folder,args.views),env=env,shell=True)
         process.wait()
 
 

@@ -239,18 +239,12 @@ class NeRFDataset:
                     self.poses.append(pose)
                     self.images.append(image)
             
-            if self.n_imgs is not None:
-                # select n_imgs randomly
-                # self.idx = np.random.choice(len(self.images), self.n_imgs, replace=False)
-                # print(self.idx)
-                # self.images = np.array(self.images)[self.idx]
-                self.images = self.images[::2]
+            if self.n_imgs is not None and self.n_imgs > 0 and self.n_imgs < len(self.poses) and split == 'train':
+                # select n_imgs evenly spaced in the list
+                idxs = np.linspace(0, len(self.poses)-1, self.n_imgs, dtype=int)
+                self.poses = np.array(self.poses)[idxs.astype(int)]
+                self.images = np.array(self.images)[idxs.astype(int)]
             
-        if self.n_imgs is not None:
-            # select n_imgs randomly
-            # self.idx = np.random.choice(len(self.poses), self.n_imgs, replace=False)
-            # self.poses = np.array(self.poses)[self.idx]
-            self.poses = self.poses[::2]
 
         self.poses = torch.from_numpy(np.stack(self.poses, axis=0)) # [N, 4, 4]
         if self.images is not None:
