@@ -41,7 +41,12 @@ class Depth_time:
         else:
             self.infer_depth = self.data_dict['nerf_depth']
         
-        self.time = self.data_dict['time']
+        # depth_views_evaluation/drink_up/ours/depth_5.npz
+        views = npz.split('/')[-1].split('.')[0].split('_')[-1]
+        
+        # change time into number of views
+        # self.time = self.data_dict['time']
+        self.time = views
         self.infer_depth *= (1.0/args.scale)
         # print the attributes of the data
         if args.crop > 0:
@@ -258,8 +263,8 @@ class Scene:
         plt.savefig(os.path.join(self.figs_dir,'mae_epoch.pdf'),bbox_inches='tight')
         plt.clf()
 
-        plt.xlim(0,120)
-        plt.ylim(0,1.0)
+        # plt.xlim(0,120)
+        # plt.ylim(0,1.0)
         plt.xticks(fontsize=fontsize)
         plt.yticks(fontsize=fontsize)
 
@@ -269,13 +274,15 @@ class Scene:
                 plt.plot([d.time for d in self.depths[i].depths_epoch],[d.rmse for d in self.depths[i].depths_epoch],label=label)
         plt.legend(fontsize=fontsize,loc='upper center', bbox_to_anchor=(0.5, 1.5),ncol=3)
         plt.grid()
-        plt.xlabel('Time [s]',fontsize=fontsize)
+        # plt.xlabel('Time [s]',fontsize=fontsize)
+        plt.xlabel('Views',fontsize=fontsize)
         plt.ylabel('RMSE',fontsize=fontsize)
+        plt.gca().invert_xaxis()
         plt.savefig(os.path.join(self.figs_dir,'rmse_time.pdf'),bbox_inches='tight')
         plt.clf()
 
-        plt.xlim(0,120)
-        plt.ylim(0,1.0)
+        # plt.xlim(0,120)
+        # plt.ylim(0,1.0)
         plt.xticks(fontsize=fontsize)
         plt.yticks(fontsize=fontsize)
         # mae over time
@@ -285,8 +292,11 @@ class Scene:
                 plt.plot([d.time for d in self.depths[i].depths_epoch],[d.mae for d in self.depths[i].depths_epoch],label=label)
         plt.legend(fontsize=fontsize,loc='upper center', bbox_to_anchor=(0.5, 1.5),ncol=3)
         plt.grid()
-        plt.xlabel('Time [s]',fontsize=fontsize)
+        # plt.xlabel('Time [s]',fontsize=fontsize)
+        plt.xlabel('Views',fontsize=fontsize)
         plt.ylabel('MAE',fontsize=fontsize)
+        # reverse x-axis
+        plt.gca().invert_xaxis()
         plt.savefig(os.path.join(self.figs_dir,'mae_time.pdf'),bbox_inches='tight')
         plt.clf()
 

@@ -23,5 +23,5 @@ if __name__ == '__main__':
         images.append(imageio.imread(f))
     
     duration = 1.0 / args.fps * len(images)
-    imageio.mimsave(args.out, images, duration=duration)
+    imageio.mimsave(args.out, images, duration=duration,loop=0)
     print('Saved gif to %s' % args.out)

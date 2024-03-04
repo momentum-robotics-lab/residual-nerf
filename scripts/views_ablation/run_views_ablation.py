@@ -27,7 +27,7 @@ def chunk_into_n(lst, n):
 
 def train_configs(data):
     process_idx = data[0]
-    views = data[1]     
+    views = data[1]
     env = os.environ.copy()
     env['CUDA_VISIBLE_DEVICES'] = str(process_idx)
 
