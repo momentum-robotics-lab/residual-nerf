@@ -244,8 +244,7 @@ class NeRFDataset:
                 idxs = np.linspace(0, len(self.poses)-1, self.n_imgs, dtype=int)
                 self.poses = np.array(self.poses)[idxs.astype(int)]
                 self.images = np.array(self.images)[idxs.astype(int)]
-
-                print('Using {} images'.format(self.n_imgs))
+            
 
         self.poses = torch.from_numpy(np.stack(self.poses, axis=0)) # [N, 4, 4]
         if self.images is not None:
@@ -316,9 +315,7 @@ class NeRFDataset:
                 'H': rH,
                 'W': rW,
                 'rays_o': rays['rays_o'],
-                'rays_d': rays['rays_d'],  
-                'inds_x': rays['inds_x'],
-                'inds_y': rays['inds_y'],  
+                'rays_d': rays['rays_d'],    
             }
 
         poses = self.poses[index].to(self.device) # [B, 4, 4]
@@ -332,8 +329,6 @@ class NeRFDataset:
             'W': self.W,
             'rays_o': rays['rays_o'],
             'rays_d': rays['rays_d'],
-            'inds_x': rays['inds_x'],
-            'inds_y': rays['inds_y'],
         }
 
         if self.images is not None:
