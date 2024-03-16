@@ -72,7 +72,6 @@ class Depth_time:
     def rmse(self,dex=True):
         # remove values off the table
         rmse = np.sqrt(np.mean((self.gt_depth - self.infer_depth)**2))
-
         return rmse
 
     def mae(self):
@@ -175,7 +174,11 @@ class Scene:
         self.gt_depth_file = os.path.join(scene_dir,'gt.npy')
         self.n_depths = None
         self.depth_names = []
-        
+
+        self.recorded_epochs = []
+        self.rmse_epochs = []
+        self.mae_epochs = []
+
         self.load_depths()
         if args.debug:
             self.debug()
@@ -208,11 +211,18 @@ class Scene:
         self.n_depths = len(self.depths)
         self.save_depth_imgs()
         self.gen_plots()
-        
+    
+
+    def log_training(self):
+        for i in range(self.n_depths):
+            self.rmse_epochs.append([d.rmse for d in self.depths[i].depths_epoch])
+            self.mae_epochs.append([d.mae for d in self.depths[i].depths_epoch])
+            self.recorded_epochs.append([d.epoch for d in self.depths[i].depths_epoch])
+
 
     def label_name(self,name):
         if name == 'dex':
-            return 'Dex'
+            return 'Dex-NeRF'
         elif name == 'nerf':
             return 'NeRF'
         elif name == 'ours':
@@ -236,7 +246,7 @@ class Scene:
             label = self.label_name(self.depth_names[i])
             if label is not None:
                 plt.plot([d.epoch for d in self.depths[i].depths_epoch],[d.rmse for d in self.depths[i].depths_epoch],label=label)
-        
+
         # plt.legend(fontsize=fontsize)
         # legend on top of figure horizontally centered
         plt.legend(fontsize=fontsize,loc='upper center', bbox_to_anchor=(0.5, 1.45),ncol=3)
@@ -340,22 +350,76 @@ class Scene:
                 plt.savefig(name,bbox_inches='tight',pad_inches=0)
                 plt.clf()
        
+def plot_combined_training(scenes):
+    n_depths = scenes[0].n_depths
+    fontsize = 16
+    logged_epochs = []
+    rmse_epochs = []
+    mae_epochs = []
 
+    # take the mean of all scenes at each epoch
+    for i in range(n_depths):
+        logged_epochs.append([])
+        rmse_epochs.append([])
+        mae_epochs.append([])
+        for j in range(len(scenes[0].depths[i].depths_epoch)):
+            logged_epochs[i].append(scenes[0].depths[i].depths_epoch[j].epoch)
+            rmse_epochs[i].append(np.mean([s.depths[i].depths_epoch[j].rmse for s in scenes]))
+            mae_epochs[i].append(np.mean([s.depths[i].depths_epoch[j].mae for s in scenes]))
+    
+    
+    # setup plot
+    plt.gcf().set_size_inches(10, 2)
+    # set fontsize of ticks
+    plt.xticks(fontsize=fontsize)
+    plt.yticks(fontsize=fontsize)
+    plt.ylim(0,1.0)
+    plt.xlim(0,10000) # 10k steps
+    # rmse over time
+    scene = scenes[0]
+    for i in range(n_depths):
+        label = scene.label_name(scene.depth_names[i])
+        if label is not None:
+            plt.plot(logged_epochs[i],rmse_epochs[i],label=label)
+    plt.legend(fontsize=fontsize,loc='upper center', bbox_to_anchor=(0.5, 1.45),ncol=3)
+    plt.grid()
+    plt.xlabel('Epoch',fontsize=fontsize)
+    plt.ylabel('RMSE',fontsize=fontsize)
+    plt.savefig(os.path.join(args.dir,'rmse_epoch_combined.pdf'),bbox_inches='tight')
+
+    #MAE
+    plt.clf()
+    plt.xlim(0,10000) # 10k steps
+    plt.ylim(0,1.0)
+    plt.xticks(fontsize=fontsize)
+    plt.yticks(fontsize=fontsize)
+    for i in range(n_depths):
+        label = scene.label_name(scene.depth_names[i])
+        if label is not None:
+            plt.plot(logged_epochs[i],mae_epochs[i],label=label)
+    plt.legend(fontsize=fontsize,loc='upper center', bbox_to_anchor=(0.5, 1.45),ncol=3)
+    plt.grid()
+    plt.xlabel('Epoch',fontsize=fontsize)
+    plt.ylabel('MAE',fontsize=fontsize)
+    plt.savefig(os.path.join(args.dir,'mae_epoch_combined.pdf'),bbox_inches='tight')
 
 # find all dirs in args.dir
 
 scenes = glob.glob(os.path.join(args.dir,'*'))
+
 # filter out non dirs
 scenes = [s for s in scenes if os.path.isdir(s)]
 
-# check if empty 
 scenes = [s for s in scenes if len(os.listdir(s)) > 0]
 
 # check if gt.npy exists
 scenes = [s for s in scenes if os.path.exists(os.path.join(s,'gt.npy'))]
 
+#DEBUG
+
 scenes = [Scene(s) for s in scenes]
 
+plot_combined_training(scenes)
 scene_objs = scenes
 # put rmse and mae into table 
 
@@ -368,7 +432,7 @@ field_names = ['Scene']
 
 # scene names
 
-scenes_names = ['shelf','clutter','bowl','drink_flat','drink_up','needles_flat','needles_up','scissors_flat','scissors_up','wine_flat','wine_up']
+scenes_names = ['shelf','clutter','bowl','drink_flat','drink_up','needles_flat','needles_up','scissors_flat','scissors_up','wine_down','wine_up']
 
 
    
@@ -384,20 +448,31 @@ for depth_name in depth_names:
                 for depth in scene_obj.depths:
                     if depth_name in depth.name:
                         # round to 4 decimal places
-                        row.append('{:.4f}'.format(depth.depths_epoch[-1].rmse))
+                        row.append(float('{:.4f}'.format(depth.depths_epoch[-1].rmse)))
                         
                         found_scene = True
                         break
         if not found_scene:
-            row.append('N/A')
+            #row.append('N/A')
+            #set to NaN
+            row.append(np.nan)
 
     table.add_row(row)
     df.loc[len(df)] = row
+
+df['mean'] = df.iloc[:,1:].mean(axis=1)
+nerf_mean = df.loc[df['Method'] == 'nerf','mean'].values[0]
+dex_mean = df.loc[df['Method'] == 'dex','mean'].values[0]
+residual_mean = df.loc[df['Method'] == 'ours','mean'].values[0]
+
+print("Residual-NeRF is {} % better than NeRF".format((nerf_mean-residual_mean)/nerf_mean * 100))
+print("Residual-NeRF is {} % better than Dex-NeRF".format((dex_mean-residual_mean)/dex_mean * 100))
+
 print("RMSE")
 print(table)
 print(df.to_latex(index=False))
-
-
+# print the average for each method
+    
 
 table = pt.PrettyTable()
 table.field_names = ['Method'] + scenes_names
@@ -411,13 +486,24 @@ for depth_name in depth_names:
             if scene_name in scene_obj.scene_dir:
                 for depth in scene_obj.depths:
                     if depth_name in depth.name:
-                        row.append('{:.4f}'.format(depth.depths_epoch[-1].mae))
+                        row.append(float('{:.4f}'.format(depth.depths_epoch[-1].mae)))
                         found_scene = True
                         break
         if not found_scene:
-            row.append('N/A')
+            #row.append('N/A')
+            #set to NaN
+            row.append(np.nan)
     table.add_row(row)
     df.loc[len(df)] = row
+
+df['mean'] = df.iloc[:,1:].mean(axis=1)
+nerf_mean = df.loc[df['Method'] == 'nerf','mean'].values[0]
+dex_mean = df.loc[df['Method'] == 'dex','mean'].values[0]
+residual_mean = df.loc[df['Method'] == 'ours','mean'].values[0]
+
+print("Residual-NeRF is {} % better than NeRF".format((nerf_mean-residual_mean)/nerf_mean * 100))
+print("Residual-NeRF is {} % better than Dex-NeRF".format((dex_mean-residual_mean)/dex_mean * 100))
+
 
 print("MAE")
 print(table)

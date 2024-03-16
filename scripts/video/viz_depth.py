@@ -39,6 +39,8 @@ if extension == 'npz':
 elif extension == 'npy':
     depths = depths_data
 
+    #DEBUG
+    depths = depths[:10]
     # H x W -> 1 x H x W
     if len(depths.shape) == 2:
         depths = np.expand_dims(depths,axis=0)
@@ -86,7 +88,6 @@ for i in range(len(depths)):
 
     # tight layout
     plt.tight_layout()
-
     # save image
     plt.savefig(os.path.join(args.o,'{:04d}.png'.format(i)),bbox_inches='tight',pad_inches=0)
     
