@@ -17,7 +17,7 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 
 # map the normalized data to colors
 # image is now RGBA (512x512x4) 
-depth_names = ['trans','nerf','dex','ours']
+depth_names = ['trans','nerf','dex','ours','nohash']
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dir',type=str,default='depth_evaluation')

@@ -32,6 +32,9 @@ from torch_ema import ExponentialMovingAverage
 from packaging import version as pver
 import lpips
 from torchmetrics.functional import structural_similarity_index_measure
+import sys
+sys.path.append('/home/splatting/robonerf/res-nerf-torch/nerf/')
+from eval_depth import rmse_mae_test
 
 def custom_meshgrid(*args):
     # ref: https://pytorch.org/docs/stable/generated/torch.meshgrid.html?highlight=meshgrid#torch.meshgrid
@@ -488,6 +491,13 @@ class Trainer(object):
             self.clip_loss = CLIPLoss(self.device)
             self.clip_loss.prepare_text([self.opt.clip_text]) # only support one text prompt now...
 
+        # NAZA CODE
+        self.total_time = 0
+        self.last_eval_time = 0
+        self.time_interval = 3 #2
+        self.eval_count = 0
+        self.rmse = []
+        self.mae = []
 
     def __del__(self):
         if self.log_ptr: 
@@ -527,8 +537,8 @@ class Trainer(object):
             loss = self.clip_loss(pred_rgb)
             loss += outputs['alpha_penalty'].mean() * self.opt.mixnet_reg # encourage mixnet to be sparse
             
-            if self.use_wandb:
-                wandb.log({"train/mixnet_mean": outputs['mixnet_coeff'].mean()})
+            # if self.use_wandb:
+            #     wandb.log({"train/mixnet_mean": outputs['mixnet_coeff'].mean()})
             return pred_rgb, None, loss
 
         images = data['images'] # [B, N, 3/4]
@@ -715,7 +725,7 @@ class Trainer(object):
         for epoch in range(self.epoch + 1, max_epochs + 1):
             self.epoch = epoch
             epoch_start_time = time.time()
-            self.train_one_epoch(train_loader)
+            self.train_one_epoch(train_loader, valid_loader)
             epoch_end_time = time.time()
             self.training_time += (epoch_end_time - epoch_start_time)
             if self.workspace is not None and self.local_rank == 0:
@@ -735,7 +745,7 @@ class Trainer(object):
 
         if self.combine_model is not None:
             for epoch in range(self.combined_rounds):
-                self.train_one_epoch(train_loader,combined_only=True)
+                self.train_one_epoch(train_loader,valid_loader,combined_only=True)
         
         if self.use_tensorboardX and self.local_rank == 0:
             self.writer.close()
@@ -816,27 +826,31 @@ class Trainer(object):
         
         np.savez(os.path.join(save_path, 'dex.npz'),dex_depth=all_preds_dex_raw,nerf_depth=all_preds_depth_raw,rgb=pred)
 
-        path = os.path.join(self.workspace, 'val', 'depth_{}.npz'.format(self.global_step))
-        if os.path.exists(path):
-            old_data = np.load(path)
-            old_time = old_data['time']
-            np.savez(path,dex_depth=all_preds_dex_raw,nerf_depth=all_preds_depth_raw,rgb=pred,time=old_time)
-        else:
-            if self.training_time is not None:
-                # check if folder exists 
-                if not os.path.exists(os.path.join(self.workspace, 'val')):
-                    os.makedirs(os.path.join(self.workspace, 'val'))
-                np.savez(path,dex_depth=all_preds_dex_raw,nerf_depth=all_preds_depth_raw,rgb=pred,time=self.training_time)
+        # NAZA CODE
+        tmp_path = f"/home/splatting/depth_eval_test/wine_down/ours/depth_{int(self.total_time)}.npz"
+        print(f"save to path {tmp_path}!!!!\n\n\n")
+        np.savez(tmp_path,dex_depth=all_preds_dex_raw,nerf_depth=all_preds_depth_raw,rgb=pred)
+        # path = os.path.join(self.workspace, 'val', 'depth_{}.npz'.format(self.global_step))
+        # if os.path.exists(path):
+        #     old_data = np.load(path)
+        #     old_time = old_data['time']
+        #     np.savez(path,dex_depth=all_preds_dex_raw,nerf_depth=all_preds_depth_raw,rgb=pred,time=old_time)
+        # else:
+        #     if self.training_time is not None:
+        #         # check if folder exists 
+        #         if not os.path.exists(os.path.join(self.workspace, 'val')):
+        #             os.makedirs(os.path.join(self.workspace, 'val'))
+        #         np.savez(path,dex_depth=all_preds_dex_raw,nerf_depth=all_preds_depth_raw,rgb=pred,time=self.training_time)
 
-        if write_video:
-            all_preds = np.stack(all_preds, axis=0)
-            all_mix_preds = np.stack(all_mix_preds, axis=0)
-            all_preds_depth = np.stack(all_preds_depth, axis=0)
-            all_preds_dex_depth = np.stack(all_preds_dex_depth, axis=0)
-            imageio.mimwrite(os.path.join(save_path, f'{name}_rgb.mp4'), all_preds, fps=25, quality=8, macro_block_size=1)
-            imageio.mimwrite(os.path.join(save_path, f'{name}_depth.mp4'), all_preds_depth, fps=25, quality=8, macro_block_size=1)
-            imageio.mimwrite(os.path.join(save_path, f'{name}_dex_depth.mp4'), all_preds_dex_depth, fps=25, quality=8, macro_block_size=1)
-            imageio.mimwrite(os.path.join(save_path, f'{name}_mix.mp4'), all_mix_preds, fps=25, quality=8, macro_block_size=1)
+        # if write_video:
+        #     all_preds = np.stack(all_preds, axis=0)
+        #     all_mix_preds = np.stack(all_mix_preds, axis=0)
+        #     all_preds_depth = np.stack(all_preds_depth, axis=0)
+        #     all_preds_dex_depth = np.stack(all_preds_dex_depth, axis=0)
+        #     imageio.mimwrite(os.path.join(save_path, f'{name}_rgb.mp4'), all_preds, fps=25, quality=8, macro_block_size=1)
+        #     imageio.mimwrite(os.path.join(save_path, f'{name}_depth.mp4'), all_preds_depth, fps=25, quality=8, macro_block_size=1)
+        #     imageio.mimwrite(os.path.join(save_path, f'{name}_dex_depth.mp4'), all_preds_dex_depth, fps=25, quality=8, macro_block_size=1)
+        #     imageio.mimwrite(os.path.join(save_path, f'{name}_mix.mp4'), all_mix_preds, fps=25, quality=8, macro_block_size=1)
 
         self.log(f"==> Finished Test.")
     
@@ -983,7 +997,7 @@ class Trainer(object):
 
         return outputs
 
-    def train_one_epoch(self, loader,combined_only = False):
+    def train_one_epoch(self, loader, valid_loader, combined_only = False):
         self.log(f"==> Start Training Epoch {self.epoch}, lr={self.optimizer.param_groups[0]['lr']:.6f} ...")
 
         total_loss = 0
@@ -1004,6 +1018,9 @@ class Trainer(object):
             pbar = tqdm.tqdm(total=len(loader) * loader.batch_size, bar_format='{desc}: {percentage:3.0f}% {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]')
 
         self.local_step = 0
+        # NAZA CODE
+        if (self.last_eval_time == 0):
+            self.last_eval_time = time.time()
 
         for data in loader:
             
@@ -1059,8 +1076,8 @@ class Trainer(object):
                 
                 psrn_tool = PSNRMeter()
                 psrn_tool.update(preds,truths)
-                if self.use_wandb:
-                    wandb.log({"train/loss": loss_val, "train/lr": self.optimizer.param_groups[0]['lr'], "train/psnr": psrn_tool.measure()}, step=self.global_step)
+                # if self.use_wandb:
+                #     wandb.log({"train/loss": loss_val, "train/lr": self.optimizer.param_groups[0]['lr'], "train/psnr": psrn_tool.measure()}, step=self.global_step)
 
 
                 if self.scheduler_update_every_step:
@@ -1068,6 +1085,36 @@ class Trainer(object):
                 else:
                     pbar.set_description(f"loss={loss_val:.4f} ({total_loss/self.local_step:.4f}), psnr={psrn_tool.measure():.4f}")
                 pbar.update(loader.batch_size)
+
+            # NAZA CODE
+            current_time = time.time()
+            train_time = current_time - self.last_eval_time
+            if train_time > self.time_interval:
+                #pdb.set_trace()
+                self.model.eval()
+                with torch.no_grad():
+                    self.total_time += train_time
+                    self.test(valid_loader, savedir='val') # evaluate for depth saving
+                    RMSE_results, MAE_results = rmse_mae_test(prinout = False)
+                    print(f"RMSE_results[1] {RMSE_results[1]}, MAE_results[1] {MAE_results[1]}, step {int(self.total_time)}")
+                    '''if self.use_wandb:
+                        # only for dexnerf
+                        # CHANGE ME EVERYTIME
+                        print(f"RMSE_results[1] {RMSE_results[1]}, MAE_results[1] {MAE_results[1]}, step {int(self.total_time)}")
+                        wandb.log({"train/RMSE": RMSE_results[1], "train/MAE": MAE_results[1]}, step=int(self.total_time))
+                    '''
+                    self.rmse.append(RMSE_results[2])
+                    self.mae.append(MAE_results[2])
+                    np.save('./resnerf_wine.npy', np.array([np.array(self.rmse), np.array(self.mae)], dtype=object), allow_pickle=True)
+
+                    self.last_eval_time = time.time()
+                    self.eval_count += 1
+
+                self.model.train()
+                pass
+
+            if (len(self.rmse) > 80):
+                sys.exit(0)
 
         if self.ema is not None:
             self.ema.update()
@@ -1197,12 +1244,12 @@ class Trainer(object):
                 self.stats["results"].append(average_loss) # if no metric, choose best by min loss
             
 
-            if self.use_wandb:
-                psnr_tool = self.metrics[0]
-                psrn = psnr_tool.measure()
-                # wandb.log({"val/psnr_time": psrn},step=int(1000.0*self.training_time))
-                # briefly pause for 10 ms
-                wandb.log({"val/psnr": psrn},step=self.global_step)
+            # if self.use_wandb:
+            #     psnr_tool = self.metrics[0]
+            #     psrn = psnr_tool.measure()
+            #     # wandb.log({"val/psnr_time": psrn},step=int(1000.0*self.training_time))
+            #     # briefly pause for 10 ms
+            #     wandb.log({"val/psnr": psrn},step=self.global_step)
 
                 # log psnr w.r.t. training time
                 

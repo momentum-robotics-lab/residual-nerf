@@ -45,8 +45,8 @@ def run_batch(gpu_data_pairs):
 data_location = args.data_location
 data_folders = glob.glob(os.path.join(data_location, '**'))
 # filter out non-dirs
-data_folders = [f for f in data_folders if os.path.isdir(f)]
-
+#data_folders = [f for f in data_folders if os.path.isdir(f)]
+data_folders = ['/home/splatting/3DGS_transparent/gaussian-splatting/sim_data_resnerf/wine_down_rgb']
 data_folders_chunked = chunk_into_n(data_folders,1)
 gpus = list(range(1))
 

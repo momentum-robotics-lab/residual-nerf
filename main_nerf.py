@@ -126,7 +126,7 @@ if __name__ == '__main__':
         is_res= True
     
     model = NeRFNetwork(
-        encoding="hashgrid",
+        encoding="hashgrid", #hashgrid
         bound=opt.bound,
         cuda_ray=opt.cuda_ray,
         density_scale=1,
@@ -138,7 +138,7 @@ if __name__ == '__main__':
 
     if opt.type == 'wrap':    
         bg_model = NeRFNetwork(
-            encoding="hashgrid",
+            encoding="hashgrid", #hashgrid
             bound=opt.bound,
             cuda_ray=opt.cuda_ray,
             density_scale=1,
@@ -226,9 +226,9 @@ if __name__ == '__main__':
             max_epoch = np.ceil(opt.iters / len(train_loader)).astype(np.int32)
             trainer.train(train_loader, valid_loader , max_epoch,opt=opt)
 
-            if test_loader.has_gt:
-                trainer.evaluate(test_loader) # blender has gt, so evaluate it.
+            # if test_loader.has_gt:
+            #     trainer.evaluate(test_loader) # blender has gt, so evaluate it.
             
-            trainer.test(test_loader, write_video=True) # test and save video
+            # trainer.test(valid_loader, write_video=True) # test and save video
             
-            trainer.save_mesh(resolution=256, threshold=10)
+            # trainer.save_mesh(resolution=256, threshold=10)
