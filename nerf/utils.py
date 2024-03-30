@@ -827,7 +827,17 @@ class Trainer(object):
         np.savez(os.path.join(save_path, 'dex.npz'),dex_depth=all_preds_dex_raw,nerf_depth=all_preds_depth_raw,rgb=pred)
 
         # NAZA CODE
-        tmp_path = f"/home/splatting/depth_eval_test/wine_down/ours/depth_{int(self.total_time)}.npz"
+        if not os.path.exists('depth_eval_test'):
+            os.makedirs('depth_eval_test')
+
+        exp_name = os.path.basename(self.workspace)
+        if not os.path.exists(f"depth_eval_test/{exp_name}"):
+            os.makedirs(f"depth_eval_test/{exp_name}")
+
+        if not os.path.exists(f"depth_eval_test/{exp_name}/ours"):
+            os.makedirs(f"depth_eval_test/{exp_name}/ours")
+
+        tmp_path = f"depth_eval_test/{exp_name}/ours/depth_{int(self.total_time)}.npz"
         print(f"save to path {tmp_path}!!!!\n\n\n")
         np.savez(tmp_path,dex_depth=all_preds_dex_raw,nerf_depth=all_preds_depth_raw,rgb=pred)
         # path = os.path.join(self.workspace, 'val', 'depth_{}.npz'.format(self.global_step))
