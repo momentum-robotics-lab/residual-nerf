@@ -494,7 +494,7 @@ class Trainer(object):
         # NAZA CODE
         self.total_time = 0
         self.last_eval_time = 0
-        self.time_interval = 3 #2
+        self.time_interval = 500 #2
         self.eval_count = 0
         self.rmse = []
         self.mae = []
@@ -1096,7 +1096,7 @@ class Trainer(object):
                     self.total_time += train_time
                     self.test(valid_loader, savedir='val') # evaluate for depth saving
                     RMSE_results, MAE_results = rmse_mae_test(prinout = False)
-                    print(f"RMSE_results[1] {RMSE_results[1]}, MAE_results[1] {MAE_results[1]}, step {int(self.total_time)}")
+                    print(f"RMSE_results[0] {RMSE_results[2]}, MAE_results[0] {MAE_results[2]}, step {int(self.total_time)}")
                     '''if self.use_wandb:
                         # only for dexnerf
                         # CHANGE ME EVERYTIME
