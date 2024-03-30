@@ -26,7 +26,7 @@ if __name__ == '__main__':
     parser.add_argument('--ckpt', type=str, default='latest')
     parser.add_argument('--bg_ckpt', type=str, default=None)
     parser.add_argument('--res_ckpt', type=str, default='latest')
-    parser.add_argument('--num_rays', type=int, default=4096, help="num rays sampled per image for each training step")
+    parser.add_argument('--num_rays', type=int, default=500, help="num rays sampled per image for each training step")
     parser.add_argument('--cuda_ray', action='store_true', help="use CUDA raymarching instead of pytorch")
     parser.add_argument('--max_steps', type=int, default=1024, help="max num steps sampled per ray (only valid when using --cuda_ray)")
     parser.add_argument('--num_steps', type=int, default=512, help="num steps sampled per ray (only valid when NOT using --cuda_ray)")
@@ -124,9 +124,10 @@ if __name__ == '__main__':
     is_res = False
     if opt.bg_ckpt is not None:
         is_res= True
-    
+
+    encoding = 'frequency' 
     model = NeRFNetwork(
-        encoding="hashgrid", #hashgrid
+        encoding=encoding, #hashgrid
         bound=opt.bound,
         cuda_ray=opt.cuda_ray,
         density_scale=1,
@@ -138,7 +139,7 @@ if __name__ == '__main__':
 
     if opt.type == 'wrap':    
         bg_model = NeRFNetwork(
-            encoding="hashgrid", #hashgrid
+            encoding=encoding, #hashgrid
             bound=opt.bound,
             cuda_ray=opt.cuda_ray,
             density_scale=1,
@@ -153,7 +154,7 @@ if __name__ == '__main__':
 
     if opt.combine_net:
         combine_model = NeRFNetwork(
-            encoding="hashgrid",
+            encoding=encoding,
             bound=opt.bound,
             cuda_ray=opt.cuda_ray,
             density_scale=1,

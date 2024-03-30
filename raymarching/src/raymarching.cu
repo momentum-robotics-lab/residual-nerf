@@ -376,7 +376,8 @@ __global__ void kernel_march_rays_train(
         const int nz = clamp(0.5 * (z * mip_rbound + 1) * H, 0.0f, (float)(H - 1));
 
         const uint32_t index = level * H3 + __morton3D(nx, ny, nz);
-        const bool occ = grid[index / 8] & (1 << (index % 8));
+        //const bool occ = grid[index / 8] & (1 << (index % 8));
+        cosnt bool occ = true;
 
         // if occpuied, advance a small step, and write to output
         //if (n == 0) printf("t=%f density=%f vs thresh=%f step=%d\n", t, density, density_thresh, num_steps);
@@ -777,7 +778,8 @@ __global__ void kernel_march_rays(
         const int nz = clamp(0.5 * (z * mip_rbound + 1) * H, 0.0f, (float)(H - 1));
 
         const uint32_t index = level * H3 + __morton3D(nx, ny, nz);
-        const bool occ = grid[index / 8] & (1 << (index % 8));
+        // const bool occ = grid[index / 8] & (1 << (index % 8));
+        const bool occ = true;
 
         // if occpuied, advance a small step, and write to output
         if (occ) {
