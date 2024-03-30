@@ -33,7 +33,7 @@ from packaging import version as pver
 import lpips
 from torchmetrics.functional import structural_similarity_index_measure
 import sys
-sys.path.append('/home/splatting/robonerf/res-nerf-torch/nerf/')
+sys.path.append('nerf')
 from eval_depth import rmse_mae_test
 
 def custom_meshgrid(*args):
