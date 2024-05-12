@@ -30,7 +30,33 @@ conda env create -f environment.yml
 conda activate torch-ngp
 ```
 
+## Download the Data
+You can access the data from [here](https://drive.google.com/drive/folders/15r_mLt8MD5-AuYfoWCLy72hD27-tHA2N?usp=sharing). You can also download all data with the following command:
+```bash
+gdown --folder https://drive.google.com/drive/folders/15r_mLt8MD5-AuYfoWCLy72hD27-tHA2N --remaining-ok 
+```
 
+The data should have the following structure:
+```
+data
+├── bowl_rgb
+│   ├── train 
+│   │   ├── r_0_-1.png
+│   │   ├── r_0_0.png
+│   │   └── ...
+│   ├── test
+│   │   ├── r_0_-1.png
+│   │   ├── r_0_0.png
+│   │   └── ...
+│   ├── val
+│   │   ├── r_0_-1.png
+│   │   ├── r_0_0.png
+│   │   └── ...
+│   └── gt_depth.npy
+```
+For each image, the first integer is the view id whereas 
+
+## Usage
 
 
 # Citation
@@ -39,6 +65,6 @@ conda activate torch-ngp
       title={Residual-NeRF: Learning Residual NeRFs for Transparent Object Manipulation}, 
       author={Bardienus P. Duisterhof and Yuemin Mao and Si Heng Teng and Jeffrey Ichnowski},
       year={2024},
-      booktitle={ICRA}
+      booktitle={ICRA 2024}
     }
 
