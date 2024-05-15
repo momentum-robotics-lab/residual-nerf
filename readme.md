@@ -58,6 +58,28 @@ For each image filename, the first integer is the view id whereas the second int
 
 ## Usage
 
+The run_scripts folder contains the `generic_script_eval.sh` and `generic_script_train.sh` scripts. To train a vanilla, background, and residual NeRF on a dataset, run:
+
+```bash 
+./run_scripts/generic_script_train.sh <GPU_ID> <ITERATIONS> <DATA_PATH> <WORKSPACE> <DOWN_SCALE> <OUT_FOLDER> <N_VIEWS>
+```
+Here:
+* <GPU_ID> Is the GPU to use for training.
+* <ITERATION> Number iterations to train for.
+* <DATA_PATH> Path to data folder in residual-NeRF format
+* <WORKSPACE> Name of workspace output that'll be created.
+* <DOWNSCALE> Downscale factor which can be used to train on smaller images, with the provided 800 x 800 dataset 1.0 makes most sense.
+* <OUT_FOLDER> output directory.
+* <N_VIEWS> Number of views used for training of the residual and vanilla nerf. This can be used to create an unbalanced dataset with fewer images of the full scene.
+
+Here is an example of what training on the provided data could look like:
+```bash
+./run_scripts/generic_script_train.sh 0 10000 data/bowl bowl 1.0 output 100
+```
+We will provide better documentation of the evaluation script, and the scripts in the `scripts` folder in the coming weeks after initial release.
+
+# Credits
+This codebase built upon [Torch-NGP](https://github.com/ashawkey/torch-ngp), an excellent implementation of Instant-NGP in Pytorch with limited compromise. 
 
 # Citation
 
