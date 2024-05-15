@@ -54,7 +54,7 @@ data
 │   │   └── ...
 │   └── gt_depth.npy
 ```
-For each image, the first integer is the view id whereas 
+For each image filename, the first integer is the view id whereas the second integer indicates a background image (-1) or an image with the object present (0).
 
 ## Usage
 
